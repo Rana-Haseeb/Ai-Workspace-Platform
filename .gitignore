@@ -1,0 +1,69 @@
+# ---- Secrets (NEVER commit) ----
+.env
+.env.*
+!.env.example
+secrets.toml
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# ---- Local working notes / assistant state (not part of the deliverable) ----
+WEEK5_PROJECT_MEMORY.md
+.claude/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+dist/
+.python-version
+
+# ---- Node / frontend build ----
+node_modules/
+web/dist/
+web/.vite/
+web/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ---- Local database and user uploads ----
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+data/uploads/
+
+# ---- Test / lint caches ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ipynb_checkpoints/
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Local run artefacts ----
+*.log
+*.tmp
+tmp/
+
+# NOTE: deliberately NOT ignored, because the challenge requires them in the repo:
+#   docs/            architecture, ERD, research report, security review, journal
+#   eval/            evaluation dataset and results
+#   experiments/     experiment results
+#   screenshots/

@@ -1,0 +1,444 @@
+"""
+Provider-agnostic LLM service with **cross-provider** fallback.
+
+Ported from the Week 3 agent, with the one change that matters for a multi-agent workload:
+Week 3 fell back across *models within one provider*. A rate-limited key therefore killed the
+whole run. Here the fallback chain is ``(provider, model)`` pairs spanning every configured
+provider, so an exhausted Groq quota continues on OpenRouter mid-workflow instead of failing
+the run (§22, "Model API failure"). That behaviour is demonstrable — revoke a key mid-run and
+the workflow completes, with the switch recorded in the trace.
+
+Retained from Week 3 because each was earned the hard way:
+- **choices: null guard** — some providers return an empty ``choices`` array; the resulting
+  empty content is detected and raised as a clean :class:`LLMError` rather than crashing.
+- **retry + backoff** on transient 429/timeout errors.
+- **user-safe errors** — every failure maps to a short message; keys never leak into UI text.
+- **JSON-prompt fallback** when a model's native function-calling refuses a nested schema.
+
+Added here:
+- **per-agent metering** — every call is recorded on a :class:`~app.services.usage.UsageTracker`
+  with tokens, latency and provider, and the run budget is checked *before* each call.
+- **per-agent model tiering** — ``agent_id`` selects the model via ``config.model_for_agent``.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import time
+from typing import TypeVar
+
+from pydantic import BaseModel, ValidationError
+
+from core.config import PROVIDERS, settings
+from services.usage import UsageTracker
+
+T = TypeVar("T", bound=BaseModel)
+
+# --------------------------------------------------------------------------- #
+# Process-wide call pacing
+# --------------------------------------------------------------------------- #
+# Free tiers meter TOKENS PER MINUTE, and a workflow's token demand is fixed — so the only
+# variable under our control is how fast we spend it. Measured: a full workflow needs ~100k
+# tokens; against a ~40k/min ceiling that is ~2.5 minutes of budget no matter what. Attempting
+# it in 28 seconds drained every provider and the run died at the final large call, with retries
+# unable to help because the deficit was arithmetic rather than transient.
+#
+# Spacing calls converts "fails unpredictably" into "takes longer", which is the right trade on a
+# metered tier. Default 0 (no pacing) so interactive use is unaffected; long unattended runs —
+# evaluation, experiments — set it deliberately.
+#
+# Shared across threads because the researcher fan-out is exactly the burst this exists to
+# flatten: without the lock, N parallel branches would each see a stale timestamp and fire
+# together, which is the behaviour being prevented.
+_pace_lock = __import__("threading").Lock()
+_last_call_at = 0.0
+
+
+def _pace() -> None:
+    """Block until ``min_call_interval_seconds`` has elapsed since the previous call."""
+    interval = settings.min_call_interval_seconds
+    if interval <= 0:
+        return
+    global _last_call_at
+    with _pace_lock:
+        wait = interval - (time.monotonic() - _last_call_at)
+        if wait > 0:
+            time.sleep(wait)
+        _last_call_at = time.monotonic()
+
+
+# Failures worth retrying **on the same model**: a blip that a short wait may clear.
+_RETRY_SAME = ("timeout", "timed out", "temporarily", "overloaded", "502", "503", "504")
+
+# Failures where retrying the same model is guaranteed waste. A per-minute token quota does not
+# refill in the 1.5-4.5s our backoff waits, so three retries buy nothing and cost ~10-24s each
+# time. Measured: with retry-on-429 enabled, every researcher call burned a doubled call count
+# and up to 24s before falling through to a model that answered immediately. These skip straight
+# to the next (provider, model) in the chain.
+_SKIP_TO_NEXT = ("429", "rate limit", "rate-limit", "quota", "too many requests")
+
+
+class LLMError(RuntimeError):
+    """A user-safe LLM failure carrying a short, display-ready message."""
+
+
+def _friendly(exc: Exception) -> LLMError:
+    """Map any provider exception to a short, safe message (no keys, no stack traces)."""
+    if isinstance(exc, LLMError):
+        return exc
+    msg = str(exc).lower()
+    if "401" in msg or "invalid api key" in msg or "authentication" in msg:
+        return LLMError("The AI provider rejected the API key. Check your credentials.")
+    if "403" in msg or "permission" in msg:
+        return LLMError("The AI provider denied access to this model (region/permission).")
+    # A daily token quota does not refill within a run, so it is reported distinctly from a
+    # per-minute limit. Waiting is pointless; the operator needs to know to add capacity.
+    if "tokens per day" in msg or "tpd" in msg:
+        return LLMError(
+            "Daily token quota exhausted for this model. Falling back to the next provider; "
+            "add another provider key or upgrade the tier to continue."
+        )
+    # NOTE: match "rate limit", never the bare substring "rate" — "rate" is inside "generate",
+    # so the looser check silently reclassified every structured-output failure ("failed to
+    # generate…") as a rate limit, sending real schema errors down the throttling path.
+    if "429" in msg or "rate limit" in msg or "rate_limit" in msg or "quota" in msg:
+        wait = retry_after_seconds(str(exc))
+        suffix = f" Provider asks for {wait:.0f}s." if wait else ""
+        err = LLMError(f"AI rate limit reached. Falling back to the next provider.{suffix}")
+        err.retry_after = wait          # type: ignore[attr-defined]
+        return err
+    if "timeout" in msg or "timed out" in msg:
+        return LLMError("The AI request timed out.")
+    if "connection" in msg or "network" in msg or "getaddrinfo" in msg:
+        return LLMError("Could not reach the AI provider. Check your connection.")
+    if "not found" in msg or "404" in msg:
+        return LLMError("That model id was not found at the provider.")
+    if "did not match sc" in msg or "failed to call a function" in msg:
+        return LLMError("The model could not produce the required structured output.")
+    return LLMError("The AI service failed to produce a valid response.")
+
+
+_RETRY_AFTER = re.compile(
+    r"(?:retry|try again) in\s*(?:(\d+)m)?\s*([\d.]+)s", re.IGNORECASE
+)
+
+
+def retry_after_seconds(message: str) -> float | None:
+    """Seconds the provider asked us to wait, parsed from its own 429 text.
+
+    Providers state the exact wait — "Please retry in 18.505089073s", "Please try again in
+    1h15m24.768s" — and honouring it beats guessing. A fixed backoff is either too short (the
+    call fails again) or too long (wall clock wasted); measured here, one provider wanted 18.5s
+    while the configured guess was 6s, so every wait was wasted and the call failed anyway.
+
+    Returns None when no delay is stated. Hours are deliberately not parsed: a wait measured in
+    hours is a daily quota, which no run should sit through.
+    """
+    m = _RETRY_AFTER.search(message)
+    if not m:
+        return None
+    minutes = int(m.group(1) or 0)
+    return minutes * 60 + float(m.group(2))
+
+
+def _extract_json(text: str) -> str:
+    """Pull the first balanced JSON object from a model response (tolerates code fences)."""
+    text = re.sub(r"```(?:json)?", "", text).strip()
+    start = text.find("{")
+    if start == -1:
+        raise LLMError("Model did not return JSON.")
+    depth = 0
+    for i in range(start, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    raise LLMError("Model returned truncated JSON.")
+
+
+def _tokens(resp) -> tuple[int, int]:
+    meta = getattr(resp, "usage_metadata", None) or {}
+    return int(meta.get("input_tokens", 0) or 0), int(meta.get("output_tokens", 0) or 0)
+
+
+class LLMService:
+    """Thin wrapper over ``ChatOpenAI`` that spans providers.
+
+    Two parameters carry meaning. ``preferred_model`` is the model the caller's *workspace* has
+    configured — Week 4 derived this from a fixed per-agent tier, but on a multi-user platform
+    the choice belongs to the user, so it is passed in. ``agent_id`` remains as the label every
+    token is attributed to in the usage report, which is what makes the dashboard's per-feature
+    cost breakdown measured rather than estimated.
+    """
+
+    def __init__(
+        self,
+        agent_id: str = "system",
+        usage: UsageTracker | None = None,
+        preferred_model: str | None = None,
+    ):
+        self.agent_id = agent_id
+        self.usage = usage
+        self.preferred_model = preferred_model
+        self.last_used_model: str | None = None
+        self.last_used_provider: str | None = None
+
+    # ------------------------------------------------------------------- chain
+    def _chain(self) -> list[tuple[str, str]]:
+        """``(provider, model)`` pairs to try, in order.
+
+        Within the active provider the workspace's chosen model comes first, then that
+        provider's remaining models; then each fallback provider's own models. A fallback
+        provider never inherits a model id specific to another provider.
+        """
+        pairs: list[tuple[str, str]] = []
+        for i, provider in enumerate(settings.provider_chain()):
+            cfg = PROVIDERS[provider]
+            models = list(cfg.models)
+            if i == 0:
+                preferred = self.preferred_model or settings.model_override
+                if preferred:
+                    models = [preferred] + [m for m in models if m != preferred]
+            for m in models:
+                if (provider, m) not in pairs:
+                    pairs.append((provider, m))
+        return pairs
+
+    def describe(self) -> str:
+        chain = self._chain()
+        head = f"{chain[0][0]}:{chain[0][1]}" if chain else "none"
+        return f"{head} (+{max(0, len(chain) - 1)} fallback)"
+
+    # ------------------------------------------------------------------ client
+    def _client_for(self, provider: str, model: str, temperature: float | None = None):
+        from langchain_openai import ChatOpenAI
+
+        cfg = PROVIDERS[provider]
+        key = os.getenv(cfg.api_key_env)
+        if not key:
+            raise LLMError(f"Missing API key: set {cfg.api_key_env} in your environment / .env.")
+        return ChatOpenAI(
+            model=model,
+            api_key=key,
+            base_url=cfg.base_url,
+            temperature=settings.temperature if temperature is None else temperature,
+            max_tokens=settings.max_tokens,
+            timeout=settings.agent_timeout_seconds,
+            max_retries=0,  # we own retry/backoff so behaviour is explicit and testable
+        )
+
+    # ------------------------------------------------------- retry & fallback
+    def _run_with_retry(self, fn):
+        """Retry one (provider, model) on transient errors; raise a user-safe error otherwise.
+
+        Rate limits are deliberately **not** retried here. They are a property of the model's
+        per-minute quota, not a blip, so the only useful response is to move on to the next model
+        in the chain — which is what raising immediately causes :meth:`_try_chain` to do.
+        """
+        attempts = settings.max_retries_per_call + 1
+        last: Exception | None = None
+        for i in range(attempts):
+            try:
+                return fn()
+            except LLMError:
+                raise  # our own guard failures are already user-safe; don't retry
+            except Exception as e:  # noqa: BLE001
+                last = e
+                text = str(e).lower()
+                if any(t in text for t in _SKIP_TO_NEXT):
+                    raise _friendly(e) from e          # straight to the next model
+                if any(t in text for t in _RETRY_SAME) and i < attempts - 1:
+                    time.sleep(1.5 * (i + 1))          # linear backoff
+                    continue
+                raise _friendly(e) from e
+        raise _friendly(last or LLMError("unknown error"))
+
+    def _try_chain(self, per_pair):
+        """Run ``per_pair(provider, model)`` across the chain until one succeeds.
+
+        Every attempt — successful or not — is metered, so the usage report shows the cost of
+        failed fallbacks rather than hiding it.
+        """
+        if self.usage:
+            self.usage.check_budget()
+
+        _pace()
+        last: LLMError | None = None
+        # Several passes. If a pass exhausts the chain and *every* failure was a rate limit, the
+        # models are healthy and merely throttled — waiting restores the fast, high-quality
+        # models, and waiting beats succeeding slowly on a worse one.
+        #
+        # Why more than two passes: per-minute token buckets are refilled by the clock, and a
+        # burst can drain EVERY provider at once. Three parallel researchers at ~2k tokens each
+        # exhausted the whole chain simultaneously, and with a single 6s retry the run simply
+        # failed — while a plain 4-token health check against the same models succeeded. The
+        # backoff grows so a deep drain gets a proportionate wait instead of the same short one.
+        for attempt in range(settings.rate_limit_passes):
+            all_rate_limited = True
+            waits: list[float] = []
+            for provider, model in self._chain():
+                t0 = time.perf_counter()
+                try:
+                    result, tin, tout = per_pair(provider, model)
+                except LLMError as e:
+                    last = e
+                    text = str(e).lower()
+                    # Only a *per-minute* limit is worth waiting out. A daily quota will not
+                    # refill in six seconds, so waiting on it just burns wall clock.
+                    minute_limited = (
+                        ("rate limit" in text or "429" in text)
+                        and "daily token quota" not in text
+                    )
+                    if not minute_limited:
+                        all_rate_limited = False
+                    else:
+                        asked_for = getattr(e, "retry_after", None)
+                        if asked_for:
+                            waits.append(float(asked_for))
+                    if self.usage:
+                        self.usage.record(
+                            agent_id=self.agent_id, provider=provider, model=model,
+                            seconds=time.perf_counter() - t0, ok=False, error=str(e),
+                        )
+                    continue
+                self.last_used_model, self.last_used_provider = model, provider
+                if self.usage:
+                    self.usage.record(
+                        agent_id=self.agent_id, provider=provider, model=model,
+                        input_tokens=tin, output_tokens=tout,
+                        seconds=time.perf_counter() - t0, ok=True,
+                    )
+                return result
+
+            if attempt < settings.rate_limit_passes - 1 and all_rate_limited:
+                # Honour the longest wait any provider actually asked for, capped so a daily
+                # quota (which reports minutes or hours) never stalls a run. The floor grows
+                # with each pass: a bucket that is still empty after 6s needs longer, not the
+                # same 6s again.
+                asked = max(waits) if waits else 0.0
+                floor = settings.rate_limit_backoff_seconds * (attempt + 1)
+                pause = min(max(asked, floor), settings.max_rate_limit_wait_seconds)
+                if pause > 0:
+                    time.sleep(pause)
+                    continue
+            break
+
+        raise last or LLMError("All configured providers and models failed.")
+
+    # ------------------------------------------------------------------- calls
+    def complete(self, system: str, user: str) -> str:
+        def per_pair(provider: str, model: str):
+            def call():
+                resp = self._client_for(provider, model).invoke(
+                    [("system", system), ("user", user)]
+                )
+                content = getattr(resp, "content", None)
+                if not content:  # choices:null guard
+                    raise LLMError("The AI returned an empty response (no choices).")
+                tin, tout = _tokens(resp)
+                return (content if isinstance(content, str) else str(content)), tin, tout
+
+            return self._run_with_retry(call)
+
+        return self._try_chain(per_pair)
+
+    def structured(self, system: str, user: str, schema: type[T]) -> T:
+        """Return a validated ``schema`` instance.
+
+        Three escalating strategies per (provider, model): native function calling, then explicit
+        JSON prompting for models whose function-calling rejects nested schemas, then the next
+        pair in the chain. The probe showed several Groq models fail native calling on the nested
+        TaskPlan while handling the JSON form, so this path is load-bearing, not defensive.
+        """
+        def per_pair(provider: str, model: str):
+            def native():
+                client = self._client_for(provider, model).with_structured_output(
+                    schema, method="function_calling", include_raw=True
+                )
+                out = client.invoke([("system", system), ("user", user)])
+                parsed, raw = out.get("parsed"), out.get("raw")
+                if parsed is None:
+                    raise LLMError("The AI returned no structured result.")
+                tin, tout = _tokens(raw) if raw is not None else (0, 0)
+                if isinstance(parsed, schema):
+                    return parsed, tin, tout
+                if isinstance(parsed, dict):
+                    return schema.model_validate(parsed), tin, tout
+                raise LLMError("The AI returned an unexpected structured type.")
+
+            try:
+                return self._run_with_retry(native)
+            except LLMError:
+                pass  # same pair: fall back to explicit JSON prompting
+
+            schema_json = json.dumps(schema.model_json_schema(), indent=2)
+            json_system = (
+                f"{system}\n\nReturn ONLY a JSON object that validates against this JSON Schema. "
+                f"No prose, no code fences.\n\nJSON Schema:\n{schema_json}"
+            )
+
+            def as_json():
+                resp = self._client_for(provider, model).invoke(
+                    [("system", json_system), ("user", user)]
+                )
+                content = getattr(resp, "content", None)
+                if not content:
+                    raise LLMError("The AI returned an empty response (no choices).")
+                tin, tout = _tokens(resp)
+                try:
+                    return schema.model_validate_json(_extract_json(str(content))), tin, tout
+                except ValidationError as e:
+                    raise LLMError("The AI response did not match the required structure.") from e
+
+            return self._run_with_retry(as_json)
+
+        return self._try_chain(per_pair)
+
+    def invoke_tools(self, messages: list, tools: list):
+        """Tool-calling invocation, with cross-provider fallback."""
+        def per_pair(provider: str, model: str):
+            def call():
+                resp = self._client_for(provider, model).bind_tools(tools).invoke(messages)
+                tin, tout = _tokens(resp)
+                return resp, tin, tout
+
+            return self._run_with_retry(call)
+
+        return self._try_chain(per_pair)
+
+
+# ---------------------------------------------------------------- convenience
+def get_llm(
+    agent_id: str = "system",
+    usage: UsageTracker | None = None,
+    preferred_model: str | None = None,
+) -> LLMService:
+    """Factory used by every caller.
+
+    ``preferred_model`` comes from the workspace's ``settings.model``; ``agent_id`` labels the
+    tokens in the usage report (``chat``, ``skill:swot``, ``memory_extract``, and so on).
+    """
+    return LLMService(agent_id=agent_id, usage=usage, preferred_model=preferred_model)
+
+
+def configured_providers() -> dict[str, bool]:
+    """Provider → whether a key is present. One entry per registry entry, siblings included."""
+    return {name: bool(os.getenv(cfg.api_key_env)) for name, cfg in PROVIDERS.items()}
+
+
+def model_backend_status() -> tuple[bool, int]:
+    """(is any backend reachable, how many are configured) — deliberately with no names.
+
+    The console shows a single "AI model" row. Which vendor sits behind it is an implementation
+    detail that does not help an operator and does reveal the account in every screenshot and
+    demo recording. The per-provider list also misrepresented capacity: three keys on one vendor
+    appeared as three providers when they are one, differing only in daily allowance.
+
+    This collapses the *display* only. `provider_chain()` still walks every configured entry, so
+    adding keys widens failover exactly as before.
+    """
+    configured = [name for name, present in configured_providers().items() if present]
+    return bool(configured), len(configured)
