@@ -159,6 +159,23 @@ class Settings(BaseModel):
     max_rate_limit_wait_seconds: float = Field(
         default_factory=lambda: _float("MAX_RATE_LIMIT_WAIT_SECONDS", 45.0))
     rate_limit_passes: int = Field(default_factory=lambda: _int("RATE_LIMIT_PASSES", 3))
+    # Per-call ceiling. A chat turn that has not started producing tokens within this window is
+    # a stall, not slow generation, and the user is better served by an error than by a spinner.
+    agent_timeout_seconds: int = Field(default_factory=lambda: _int("AGENT_TIMEOUT_SECONDS", 60))
+    # Minimum gap between model calls, process-wide. 0 disables pacing. Week 4 used this for long
+    # unattended runs on a tokens-per-minute tier; here it stays available for the Phase 8
+    # evaluation harness, which fires many calls back to back.
+    min_call_interval_seconds: float = Field(
+        default_factory=lambda: _float("MIN_CALL_INTERVAL_SECONDS", 0.0))
+
+    # --- Budget ceilings, read by services.usage.UsageTracker ---
+    # Interactive chat does not attach a tracker, so these bind only where one is passed in:
+    # the evaluation and experiment runners, which are the parts that can run away unattended.
+    max_agent_calls_per_run: int = Field(
+        default_factory=lambda: _int("MAX_AGENT_CALLS_PER_RUN", 200))
+    max_run_seconds: int = Field(default_factory=lambda: _int("MAX_RUN_SECONDS", 1800))
+    max_cost_usd_per_run: float = Field(
+        default_factory=lambda: _float("MAX_COST_USD_PER_RUN", 0.50))
 
     # --- Database ---
     database_url: str = Field(

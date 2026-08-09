@@ -120,6 +120,44 @@ export const auth = {
   me: () => request<User>('/api/auth/me'),
 }
 
+export interface Message {
+  id: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  citations: unknown[]
+  memory_used: unknown[]
+  is_pinned: boolean
+  model: string | null
+  tokens_in: number
+  tokens_out: number
+  cost_usd: number
+  latency_ms: number
+  created_at: string
+}
+
+export interface Conversation {
+  id: number
+  title: string
+  session_id: string
+  is_pinned: boolean
+  tags: string[]
+  created_at: string
+  updated_at: string
+  message_count: number
+  preview: string
+}
+
+export interface ConversationDetail extends Conversation {
+  messages: Message[]
+}
+
+/** One line of the NDJSON chat stream. */
+export type StreamEvent =
+  | { type: 'start'; conversation_id: number; user_message_id: number }
+  | { type: 'token'; text: string }
+  | { type: 'done'; message_id: number; title: string; model: string | null; latency_ms: number; tokens_out: number }
+  | { type: 'error'; detail: string }
+
 // ------------------------------------------------------------------- workspaces
 export const workspaces = {
   /** The choices the server will accept — icons, models, personalities, response styles. */
@@ -151,4 +189,93 @@ export const workspaces = {
       method: 'PATCH',
       body: JSON.stringify(changes),
     }),
+}
+
+// ----------------------------------------------------------------- conversations
+export const conversations = {
+  list: (workspaceId: number, query?: string) =>
+    request<Conversation[]>(
+      `/api/workspaces/${workspaceId}/conversations${query ? `?q=${encodeURIComponent(query)}` : ''}`,
+    ),
+
+  create: (workspaceId: number) =>
+    request<ConversationDetail>(`/api/workspaces/${workspaceId}/conversations`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+
+  get: (workspaceId: number, id: number) =>
+    request<ConversationDetail>(`/api/workspaces/${workspaceId}/conversations/${id}`),
+
+  update: (
+    workspaceId: number,
+    id: number,
+    changes: { title?: string; is_pinned?: boolean; tags?: string[] },
+  ) =>
+    request<Conversation>(`/api/workspaces/${workspaceId}/conversations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(changes),
+    }),
+
+  remove: (workspaceId: number, id: number) =>
+    request<void>(`/api/workspaces/${workspaceId}/conversations/${id}`, { method: 'DELETE' }),
+
+  togglePin: (workspaceId: number, id: number, messageId: number) =>
+    request<Message>(
+      `/api/workspaces/${workspaceId}/conversations/${id}/messages/${messageId}/pin`,
+      { method: 'PATCH' },
+    ),
+
+  /**
+   * Send a message and yield each stream event as it arrives.
+   *
+   * An async generator rather than a callback: the caller writes a plain `for await` loop, and
+   * cancellation is `break`, which propagates to the reader and aborts the request.
+   *
+   * The buffer matters. A network chunk is not a line — one chunk can hold three events, or half
+   * of one. Splitting on the last newline and carrying the remainder forward is what stops a
+   * token being dropped or a partial JSON object being parsed.
+   */
+  async *stream(
+    workspaceId: number,
+    conversationId: number,
+    content: string,
+    signal?: AbortSignal,
+  ): AsyncGenerator<StreamEvent> {
+    const response = await fetch(
+      `/api/workspaces/${workspaceId}/conversations/${conversationId}/stream`,
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+        signal,
+      },
+    )
+
+    if (!response.ok) throw new ApiError(response.status, await errorMessage(response))
+    if (!response.body) throw new ApiError(500, 'The server sent no response body.')
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (line.trim()) yield JSON.parse(line) as StreamEvent
+        }
+      }
+      if (buffer.trim()) yield JSON.parse(buffer) as StreamEvent
+    } finally {
+      reader.cancel().catch(() => {})
+    }
+  },
 }

@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 
 import { AppShell } from '@/components/layout/AppShell'
 import { useAuth } from '@/hooks/useAuth'
+import Chat from '@/routes/Chat'
 import Login from '@/routes/Login'
 import Register from '@/routes/Register'
 import WorkspaceHome from '@/routes/WorkspaceHome'
@@ -74,6 +75,7 @@ export default function App() {
         }
       >
         <Route index element={<WorkspaceHome />} />
+        <Route path="c/:conversationId" element={<Chat />} />
         <Route path="settings" element={<WorkspaceSettings />} />
       </Route>
 

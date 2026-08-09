@@ -4,28 +4,27 @@ import {
   FileText,
   LayoutDashboard,
   Library,
-  MessagesSquare,
   Settings,
   Sparkles,
 } from 'lucide-react'
 
+import { ConversationList } from '@/components/layout/ConversationList'
 import { workspaceIcon } from '@/lib/icons'
 import type { WorkspaceDetail } from '@/lib/api'
 
 /**
- * Navigation within one workspace.
+ * The workspace column: what this workspace is, where you can go inside it, and its
+ * conversations.
  *
  * Sections that arrive in later phases are shown and disabled rather than hidden. Hiding them
- * would make the product look smaller than it is during a demo; disabling them states plainly
- * what exists now. Each carries the phase it lands in as its title attribute.
+ * would make the product look smaller than it is; disabling them states plainly what exists now.
  */
 const SECTIONS = [
-  { to: '', label: 'Chat', icon: MessagesSquare, ready: false, phase: 'Phase 3' },
-  { to: 'documents', label: 'Documents', icon: FileText, ready: false, phase: 'Phase 4' },
-  { to: 'memory', label: 'Memory', icon: BrainCircuit, ready: false, phase: 'Phase 5' },
-  { to: 'prompts', label: 'Prompts', icon: Library, ready: false, phase: 'Phase 6' },
-  { to: 'skills', label: 'Skills', icon: Sparkles, ready: false, phase: 'Phase 6' },
-  { to: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, ready: false, phase: 'Phase 7' },
+  { to: 'documents', label: 'Documents', icon: FileText, ready: false, phase: 'P4' },
+  { to: 'memory', label: 'Memory', icon: BrainCircuit, ready: false, phase: 'P5' },
+  { to: 'prompts', label: 'Prompts', icon: Library, ready: false, phase: 'P6' },
+  { to: 'skills', label: 'Skills', icon: Sparkles, ready: false, phase: 'P6' },
+  { to: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, ready: false, phase: 'P7' },
   { to: 'settings', label: 'Settings', icon: Settings, ready: true, phase: '' },
 ] as const
 
@@ -33,7 +32,7 @@ export function WorkspaceSidebar({ workspace }: { workspace: WorkspaceDetail }) 
   const Icon = workspaceIcon(workspace.icon)
 
   return (
-    <div className="flex h-full w-60 shrink-0 flex-col border-r border-border">
+    <div className="flex h-full w-64 shrink-0 flex-col border-r border-border">
       <div className="flex items-start gap-2.5 border-b border-border px-4 py-3.5">
         <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0">
@@ -44,18 +43,26 @@ export function WorkspaceSidebar({ workspace }: { workspace: WorkspaceDetail }) 
         </div>
       </div>
 
-      <nav aria-label="Workspace sections" className="flex-1 space-y-0.5 p-2">
+      {/* Conversations take the space that is left, and scroll on their own. */}
+      <div className="min-h-0 flex-1">
+        <ConversationList workspaceId={workspace.id} />
+      </div>
+
+      <nav
+        aria-label="Workspace sections"
+        className="grid grid-cols-3 gap-0.5 border-t border-border p-2"
+      >
         {SECTIONS.map(({ to, label, icon: SectionIcon, ready, phase }) =>
           ready ? (
             <NavLink
               key={label}
-              to={to ? `/w/${workspace.id}/${to}` : `/w/${workspace.id}`}
-              end
+              to={`/w/${workspace.id}/${to}`}
+              title={label}
               className={({ isActive }) =>
                 [
-                  'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
+                  'flex flex-col items-center gap-1 rounded-md px-1 py-2 text-[10px] transition-colors',
                   isActive
-                    ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
                 ].join(' ')
               }
@@ -66,13 +73,12 @@ export function WorkspaceSidebar({ workspace }: { workspace: WorkspaceDetail }) 
           ) : (
             <span
               key={label}
-              title={`Arrives in ${phase}`}
+              title={`Arrives in Phase ${phase.slice(1)}`}
               aria-disabled="true"
-              className="flex cursor-not-allowed items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground/50"
+              className="flex cursor-not-allowed flex-col items-center gap-1 rounded-md px-1 py-2 text-[10px] text-muted-foreground/40"
             >
               <SectionIcon className="size-4" aria-hidden />
               {label}
-              <span className="ml-auto text-[10px] uppercase tracking-wide">{phase}</span>
             </span>
           ),
         )}

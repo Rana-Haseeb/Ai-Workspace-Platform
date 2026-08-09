@@ -358,6 +358,84 @@ class LLMService:
 
         return self._try_chain(per_pair)
 
+    def chat(self, messages: list[tuple[str, str]]) -> str:
+        """Complete a multi-turn conversation.
+
+        ``messages`` is a list of ``(role, content)`` pairs — the conversation history, not just
+        one question. Separate from :meth:`complete` because a chat turn needs the whole history
+        for the model to resolve "it", "that one", and every other reference back.
+        """
+        def per_pair(provider: str, model: str):
+            def call():
+                resp = self._client_for(provider, model).invoke(messages)
+                content = getattr(resp, "content", None)
+                if not content:
+                    raise LLMError("The AI returned an empty response (no choices).")
+                tin, tout = _tokens(resp)
+                return (content if isinstance(content, str) else str(content)), tin, tout
+
+            return self._run_with_retry(call)
+
+        return self._try_chain(per_pair)
+
+    def stream_chat(self, messages: list[tuple[str, str]]):
+        """Yield the reply token by token.
+
+        Failover works differently here than everywhere else, and the difference is forced by
+        the medium. Once a token has been sent to the client it cannot be taken back, so the
+        chain can only be walked *until the first token arrives*. A provider that fails before
+        emitting anything is skipped silently; one that dies mid-reply raises, because the user
+        is already looking at half an answer and pretending otherwise would be worse.
+
+        Token counts are estimated rather than reported: streaming responses carry no usage
+        block. The estimate is characters/4, which is close enough for a cost dashboard and is
+        labelled as an estimate wherever it surfaces.
+        """
+        last: LLMError | None = None
+
+        for provider, model in self._chain():
+            started = False
+            t0 = time.perf_counter()
+            collected: list[str] = []
+            try:
+                for chunk in self._client_for(provider, model).stream(messages):
+                    piece = getattr(chunk, "content", "") or ""
+                    if not piece:
+                        continue
+                    started = True
+                    collected.append(piece)
+                    yield piece
+            except Exception as e:  # noqa: BLE001
+                error = _friendly(e)
+                if started:
+                    # Half an answer is already on screen. Surface it rather than silently
+                    # restarting on another provider and producing two half-answers.
+                    raise error from e
+                last = error
+                if self.usage:
+                    self.usage.record(
+                        agent_id=self.agent_id, provider=provider, model=model,
+                        seconds=time.perf_counter() - t0, ok=False, error=str(error),
+                    )
+                continue
+
+            if not started:
+                last = LLMError("The AI returned an empty response (no choices).")
+                continue
+
+            text = "".join(collected)
+            self.last_used_model, self.last_used_provider = model, provider
+            if self.usage:
+                prompt_chars = sum(len(content) for _, content in messages)
+                self.usage.record(
+                    agent_id=self.agent_id, provider=provider, model=model,
+                    input_tokens=prompt_chars // 4, output_tokens=len(text) // 4,
+                    seconds=time.perf_counter() - t0, ok=True,
+                )
+            return
+
+        raise last or LLMError("All configured providers and models failed.")
+
     def structured(self, system: str, user: str, schema: type[T]) -> T:
         """Return a validated ``schema`` instance.
 
@@ -428,13 +506,22 @@ def get_llm(
     agent_id: str = "system",
     usage: UsageTracker | None = None,
     preferred_model: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
 ) -> LLMService:
     """Factory used by every caller.
 
-    ``preferred_model`` comes from the workspace's ``settings.model``; ``agent_id`` labels the
-    tokens in the usage report (``chat``, ``skill:swot``, ``memory_extract``, and so on).
+    ``preferred_model``, ``temperature`` and ``max_tokens`` come from the workspace's settings
+    row; ``agent_id`` labels the tokens in the usage report (``chat``, ``skill:swot``,
+    ``memory_extract``, and so on).
     """
-    return LLMService(agent_id=agent_id, usage=usage, preferred_model=preferred_model)
+    return LLMService(
+        agent_id=agent_id,
+        usage=usage,
+        preferred_model=preferred_model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
 
 
 def configured_providers() -> dict[str, bool]:

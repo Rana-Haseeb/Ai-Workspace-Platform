@@ -79,11 +79,53 @@ def client(engine, monkeypatch):
         finally:
             session.close()
 
+    # The streaming endpoint opens its own session, because the request-scoped one is already
+    # closed by the time the generator runs. Point that factory at the test database too, or
+    # every streaming test would silently write to the developer's real workspace.db.
+    monkeypatch.setattr("api.routers.conversations.SessionLocal", TestSession)
+
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+class FakeLLM:
+    """Stand-in for :class:`services.llm_service.LLMService`.
+
+    Chat tests assert on persistence, ordering, titling and isolation — none of which need a real
+    model, and all of which become flaky if a network call is involved. One live test in
+    ``test_live_chat.py`` covers the real provider.
+    """
+
+    def __init__(self, reply: str = "A test reply.", title: str = "Test title"):
+        self.reply = reply
+        self.title = title
+        self.last_used_model = "fake-model"
+        self.last_used_provider = "fake"
+        self.seen_messages: list[list[tuple[str, str]]] = []
+
+    def chat(self, messages):
+        self.seen_messages.append(messages)
+        return self.reply
+
+    def stream_chat(self, messages):
+        self.seen_messages.append(messages)
+        # Word by word, so a test can prove more than one chunk actually arrives.
+        for word in self.reply.split(" "):
+            yield word + " "
+
+    def complete(self, system: str, user: str) -> str:
+        return self.title
+
+
+@pytest.fixture
+def fake_llm(monkeypatch):
+    """Replace the model client everywhere chat_service reaches for one."""
+    stub = FakeLLM()
+    monkeypatch.setattr("services.chat_service.get_llm", lambda **kwargs: stub)
+    return stub
 
 
 @pytest.fixture

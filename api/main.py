@@ -5,6 +5,7 @@ their own database without the import order mattering.
 """
 from __future__ import annotations
 
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,10 +22,24 @@ log = get_logger("api")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
+
+    # Import the model client at boot rather than on the first chat message.
+    #
+    # Measured, not guessed: importing langchain_openai takes ~18 seconds the first time, and
+    # llm_service imports it lazily inside _client_for. That put the whole 18s inside the first
+    # user's request — a message that should take 0.2s was recorded at 20.7s. Paying it here
+    # costs startup time nobody is watching instead of the first impression somebody is.
+    started = time.perf_counter()
+    try:
+        import langchain_openai  # noqa: F401
+        log.info("Model client warmed in %.1fs", time.perf_counter() - started)
+    except ImportError:  # pragma: no cover — only if the dependency is genuinely absent
+        log.warning("langchain_openai is not installed; chat will fail until it is")
+
     log.info(
         "API ready - %s, provider chain: %s",
         "SQLite" if settings.is_sqlite() else "PostgreSQL",
-        " -> ".join(settings.provider_chain()),
+        " -> ".join(settings.provider_chain()) or "none configured",
     )
     yield
 
@@ -48,10 +63,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from api.routers import auth, workspaces
+    from api.routers import auth, conversations, workspaces
 
     app.include_router(auth.router)
     app.include_router(workspaces.router)
+    app.include_router(conversations.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:

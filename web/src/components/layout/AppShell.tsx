@@ -80,7 +80,10 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {/* No scrolling here. Chat owns its own scroll container so the composer can stay pinned
+            to the bottom while the transcript scrolls behind it; a scroll on this element would
+            nest two scroll regions and make the wheel behave differently over each. */}
+        <main className="flex min-h-0 flex-1 flex-col">
           {current.isLoading ? <ShellSkeleton /> : <Outlet context={current.data} />}
         </main>
       </div>

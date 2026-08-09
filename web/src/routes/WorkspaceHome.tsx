@@ -27,7 +27,7 @@ export default function WorkspaceHome() {
   ]
 
   const upcoming = [
-    { icon: MessagesSquare, label: 'Chat with history and streaming', phase: 'Phase 3' },
+    { icon: MessagesSquare, label: 'Chat with history and streaming', phase: 'Ready' },
     { icon: FileText, label: 'Documents with cited answers', phase: 'Phase 4' },
     { icon: BrainCircuit, label: 'Memory that persists across sessions', phase: 'Phase 5' },
     { icon: Sparkles, label: 'Prompt library and reusable skills', phase: 'Phase 6' },

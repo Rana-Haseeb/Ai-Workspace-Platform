@@ -9,7 +9,7 @@ something you said three sessions ago.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-CA4245?style=for-the-badge)](https://sqlalchemy.org)
-[![Tests](https://img.shields.io/badge/tests-88_passing-success?style=for-the-badge)](tests/)
+[![Tests](https://img.shields.io/badge/tests-124_passing-success?style=for-the-badge)](tests/)
 [![WCAG](https://img.shields.io/badge/WCAG-AA_verified-0F9D58?style=for-the-badge)](scripts/check_contrast.js)
 
 <samp>Visibility Bots Innovation Lab · AI Summer Fellowship 2026 · Track 2: NLP & AI Agents · **Week 5**</samp>
@@ -40,6 +40,7 @@ something you said three sessions ago.**
 - [API endpoints](#api-endpoints)
 - [Testing and verification](#testing-and-verification)
 - [Design system](#design-system)
+- [Measured performance](#measured-performance)
 - [Deployment](#deployment)
 - [Screenshots](#screenshots)
 - [Evaluation results](#evaluation-results)
@@ -79,7 +80,7 @@ done until that output passes.
 | 0 | Repo, config, 12-table schema, test harness, React scaffold, dual theme | ✅ |
 | 1 | Authentication, argon2 hashing, JWT sessions, tenant isolation | ✅ |
 | 2 | Workspace CRUD, the 8 assistant settings, the app shell | ✅ |
-| 3 | Persistent chat with token streaming | ⬜ |
+| 3 | Persistent chat with token streaming | ✅ |
 | 4 | Knowledge base and document intelligence with citations | ⬜ |
 | 5 | Long-term memory | ⬜ |
 | 6 | Prompt library and reusable skills | ⬜ |
@@ -95,12 +96,16 @@ The full plan, including the specification and gate for every phase, is in
 **Currently passing:**
 
 ```
-88 tests passed
+124 tests passed
 PHASE 0 PASSED - 12 tables, 8 settings fields, 7 indexed keys, 2 themes.
 PHASE 1 PASSED - argon2 hashing, signed sessions, and 403 isolation verified.
 PHASE 2 PASSED - workspace CRUD, 8 assistant fields, validation, persistence.
+PHASE 3 PASSED - live replies, titling, history, streaming, search, persistence.
 All pairs meet WCAG AA.
 ```
+
+Phase 3's gate is the only one that calls a real provider, because what it verifies is that a
+real reply arrives, is stored, and is still there afterwards. The test suite stays offline.
 
 ---
 
@@ -115,13 +120,18 @@ All pairs meet WCAG AA.
 | **Tenant isolation** | Every workspace-scoped route passes through one ownership dependency. Another user gets 403, an anonymous caller gets 401 |
 | **Multiple workspaces** | Each with its own name, description, icon, and independent assistant configuration |
 | **Assistant configuration** | All eight fields — name, role, system prompt, model, temperature, max tokens, personality, response style — plus memory and knowledge-base toggles |
+| **Persistent chat** | Conversations per workspace, full transcript, timestamps, session ids. Survives a server restart |
+| **Token streaming** | Replies appear word by word over NDJSON, with a stop button that actually aborts the request |
+| **Automatic titles** | Named from the opening message, with a fallback to the message itself if the naming call fails |
+| **Search** | Matches conversation titles *and* message bodies, so a half-remembered phrase finds the thread |
+| **Rename, pin, tag, delete** | Pinned conversations sort first; tags are de-duplicated and capped |
+| **Per-message usage** | Model, token counts and latency recorded on every reply and mirrored into `logs` |
 | **Dark and light themes** | Dark by default, applied before first paint. Every colour pair verified against WCAG AA in both |
 
 ### Coming in later phases
 
-Persistent chat with streaming · document upload with cited answers · long-term memory ·
-prompt library with versioning · six reusable skills · usage dashboard · conversation export ·
-tagging and pinned messages.
+Document upload with cited answers · long-term memory · prompt library with versioning ·
+six reusable skills · usage dashboard · conversation export.
 
 ---
 
@@ -346,6 +356,27 @@ Full interactive documentation is generated from the code at `/docs`.
 | `GET` | `/api/workspaces/{id}/settings` | Assistant configuration |
 | `PATCH` | `/api/workspaces/{id}/settings` | Update any subset of the eight fields |
 
+### Conversations
+
+All nested under `/api/workspaces/{workspace_id}`, so every one inherits the ownership check.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/conversations?q=` | List, newest first, pinned on top. `q` searches titles and message bodies |
+| `POST` | `/conversations` | Start an empty conversation |
+| `GET` | `/conversations/{id}` | Full transcript |
+| `PATCH` | `/conversations/{id}` | Rename, pin, tag |
+| `DELETE` | `/conversations/{id}` | Delete it and its messages |
+| `POST` | `/conversations/{id}/messages` | Send a message, get the finished reply as JSON |
+| `POST` | `/conversations/{id}/stream` | Send a message, get NDJSON events as it generates |
+| `PATCH` | `/conversations/{id}/messages/{mid}/pin` | Pin or unpin a message |
+
+**Why NDJSON and not Server-Sent Events.** SSE adds `data:` prefixes and blank-line terminators
+to parse around, and its automatic reconnection is actively unwanted here — a dropped chat
+stream should surface, not silently replay. One JSON object per line is simpler on both sides.
+
+Stream events: `start` → `token`* → `done`, or `error` in place of `done`.
+
 ### Meta
 
 | Method | Path | Purpose |
@@ -439,6 +470,45 @@ OS to reduce motion get a static interface, not a slower one.
 
 ---
 
+## Measured performance
+
+Numbers from this machine against Groq, not estimates. Reproduce with
+`python scripts/verify_phase3.py`.
+
+| Model | Full reply | Time to first token | Stream total |
+|---|---|---|---|
+| `llama-3.3-70b-versatile` | 0.24s | 0.17s | 0.19s |
+| `openai/gpt-oss-120b` | 0.40s | 0.43s | 0.61s |
+| `openai/gpt-oss-20b` | 0.43s | 0.17s | 0.18s |
+
+### The cold start that was hiding in these numbers
+
+An early measurement showed `gpt-oss-120b` taking **20.3 seconds** for a one-sentence answer
+while the other two took under half a second. The obvious conclusion — that model is slow — was
+wrong.
+
+`llm_service` imports `langchain_openai` lazily, inside the client factory. That import takes
+**18 seconds** the first time in a process. Whichever model happened to be called first paid it,
+and in that run it was `gpt-oss-120b`. Re-measuring with the import warmed put all three models
+under a second.
+
+The measurement bug was real, though: it meant the *first user message after every server start*
+was recorded at 20.7s instead of 0.2s. The fix is in `api/main.py` — the import now happens
+during startup, so the cost lands where nobody is waiting:
+
+```
+Model client warmed in 18.4s
+API ready - SQLite, provider chain: groq
+```
+
+First message after a fresh start is now 2.5s (the remaining time is the first TLS handshake to
+the provider), and subsequent messages are ~0.2s.
+
+**The lesson, recorded because it will happen again:** a latency number from the first call in a
+process is measuring your imports, not your model.
+
+---
+
 ## Deployment
 
 *Arrives in Phase 11.* The plan: a multi-stage Dockerfile where Node builds `web/dist` and
@@ -476,9 +546,18 @@ is a surprise.
   more than the marginal concealment.
 - **`create_all` is not a migration tool.** Adding a column to an existing database needs a
   manual migration. Locally, delete `workspace.db` and re-run `init_db.py`.
-- **No rate limiting yet.** `RATE_LIMIT_PER_MINUTE` is configured and not yet enforced; it
-  arrives with the chat endpoint in Phase 3, which is the first route expensive enough to matter.
-- **Phases 3–11 are not built.** The sidebar shows those sections disabled with the phase they
+- **No rate limiting yet.** `RATE_LIMIT_PER_MINUTE` is configured and not yet enforced. Chat is
+  now the expensive route, so this is the next thing to close.
+- **Streaming token counts are estimated.** A streamed response carries no usage block, so
+  input and output tokens are approximated as characters/4. Non-streamed replies use the
+  provider's reported counts. The dashboard labels which is which.
+- **Streaming failover only works before the first token.** Once text has reached the browser
+  the platform cannot silently switch providers, so a mid-reply failure surfaces as an error
+  rather than restarting on another backend.
+- **History is trimmed by turn count, not tokens.** The last 20 messages are replayed. A very
+  long single message could still crowd the window; Phase 8's conversation-length experiment
+  measures what this costs.
+- **Phases 4–11 are not built.** The sidebar shows those sections disabled with the phase they
   arrive in, rather than hiding them.
 
 ---
