@@ -77,6 +77,30 @@ export interface Workspace {
   created_at: string
 }
 
+export interface AssistantSettings {
+  assistant_name: string
+  role: string
+  system_prompt: string
+  model: string | null
+  temperature: number
+  max_tokens: number
+  personality: string
+  response_style: string
+  use_memory: boolean
+  use_knowledge_base: boolean
+}
+
+export interface WorkspaceDetail extends Workspace {
+  settings: AssistantSettings
+}
+
+export interface WorkspaceMeta {
+  icons: string[]
+  models: { id: string; label: string }[]
+  personalities: string[]
+  response_styles: string[]
+}
+
 // ------------------------------------------------------------------------- auth
 export const auth = {
   register: (email: string, password: string, displayName?: string) =>
@@ -98,13 +122,33 @@ export const auth = {
 
 // ------------------------------------------------------------------- workspaces
 export const workspaces = {
+  /** The choices the server will accept — icons, models, personalities, response styles. */
+  meta: () => request<WorkspaceMeta>('/api/workspaces/meta'),
+
   list: () => request<Workspace[]>('/api/workspaces'),
 
   create: (name: string, description?: string, icon = 'folder') =>
-    request<Workspace>('/api/workspaces', {
+    request<WorkspaceDetail>('/api/workspaces', {
       method: 'POST',
       body: JSON.stringify({ name, description: description || null, icon }),
     }),
 
-  get: (id: number) => request<Workspace>(`/api/workspaces/${id}`),
+  get: (id: number) => request<WorkspaceDetail>(`/api/workspaces/${id}`),
+
+  update: (id: number, changes: Partial<Pick<Workspace, 'name' | 'description' | 'icon'>>) =>
+    request<WorkspaceDetail>(`/api/workspaces/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(changes),
+    }),
+
+  remove: (id: number) => request<void>(`/api/workspaces/${id}`, { method: 'DELETE' }),
+
+  getSettings: (id: number) => request<AssistantSettings>(`/api/workspaces/${id}/settings`),
+
+  /** Send only what changed; omitted fields keep their stored values. */
+  updateSettings: (id: number, changes: Partial<AssistantSettings>) =>
+    request<AssistantSettings>(`/api/workspaces/${id}/settings`, {
+      method: 'PATCH',
+      body: JSON.stringify(changes),
+    }),
 }

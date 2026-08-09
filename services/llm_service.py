@@ -179,10 +179,16 @@ class LLMService:
         agent_id: str = "system",
         usage: UsageTracker | None = None,
         preferred_model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ):
         self.agent_id = agent_id
         self.usage = usage
         self.preferred_model = preferred_model
+        # None means "use the deployment default". On a multi-user platform these come from the
+        # workspace's settings row, so two workspaces on one deployment can behave differently.
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         self.last_used_model: str | None = None
         self.last_used_provider: str | None = None
 
@@ -220,12 +226,19 @@ class LLMService:
         key = os.getenv(cfg.api_key_env)
         if not key:
             raise LLMError(f"Missing API key: set {cfg.api_key_env} in your environment / .env.")
+
+        # Precedence: explicit call argument, then this service's workspace settings, then the
+        # deployment default.
+        if temperature is None:
+            temperature = self.temperature if self.temperature is not None else settings.temperature
+        max_tokens = self.max_tokens if self.max_tokens is not None else settings.max_tokens
+
         return ChatOpenAI(
             model=model,
             api_key=key,
             base_url=cfg.base_url,
-            temperature=settings.temperature if temperature is None else temperature,
-            max_tokens=settings.max_tokens,
+            temperature=temperature,
+            max_tokens=max_tokens,
             timeout=settings.agent_timeout_seconds,
             max_retries=0,  # we own retry/backoff so behaviour is explicit and testable
         )

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import './index.css'
 import App from './App.tsx'
+import { TooltipProvider } from './components/ui/tooltip'
 import { AuthProvider } from './hooks/useAuth'
 import { applyTheme, storedTheme } from './hooks/useTheme'
 
@@ -27,7 +28,9 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <TooltipProvider>
+            <App />
+          </TooltipProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

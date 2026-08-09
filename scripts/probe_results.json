@@ -1,0 +1,105 @@
+{
+  "groq": {
+    "base_url": "https://api.groq.com/openai/v1",
+    "models": [
+      {
+        "model": "openai/gpt-oss-120b",
+        "completion": {
+          "ok": true,
+          "seconds": 3.45,
+          "error": "",
+          "usage": {}
+        },
+        "structured": {
+          "ok": true,
+          "seconds": 0.88,
+          "error": ""
+        },
+        "tool_calling": {
+          "ok": true,
+          "seconds": 0.47,
+          "error": ""
+        },
+        "usable": true
+      },
+      {
+        "model": "openai/gpt-oss-20b",
+        "completion": {
+          "ok": true,
+          "seconds": 0.44,
+          "error": "",
+          "usage": {}
+        },
+        "structured": {
+          "ok": true,
+          "seconds": 0.72,
+          "error": ""
+        },
+        "tool_calling": {
+          "ok": true,
+          "seconds": 0.4,
+          "error": ""
+        },
+        "usable": true
+      },
+      {
+        "model": "llama-3.3-70b-versatile",
+        "completion": {
+          "ok": true,
+          "seconds": 0.16,
+          "error": "",
+          "usage": {}
+        },
+        "structured": {
+          "ok": true,
+          "seconds": 0.34,
+          "error": ""
+        },
+        "tool_calling": {
+          "ok": true,
+          "seconds": 0.14,
+          "error": ""
+        },
+        "usable": true
+      },
+      {
+        "model": "llama-3.1-8b-instant",
+        "completion": {
+          "ok": true,
+          "seconds": 0.12,
+          "error": "",
+          "usage": {}
+        },
+        "structured": {
+          "ok": true,
+          "seconds": 0.3,
+          "error": ""
+        },
+        "tool_calling": {
+          "ok": true,
+          "seconds": 0.13,
+          "error": ""
+        },
+        "usable": true
+      }
+    ]
+  },
+  "groq2": {
+    "skipped": "no api key"
+  },
+  "groq3": {
+    "skipped": "no api key"
+  },
+  "google": {
+    "skipped": "no api key"
+  },
+  "openrouter": {
+    "skipped": "no api key"
+  },
+  "xai": {
+    "skipped": "no api key"
+  },
+  "openai": {
+    "skipped": "no api key"
+  }
+}

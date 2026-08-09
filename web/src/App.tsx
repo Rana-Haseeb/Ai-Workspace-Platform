@@ -1,10 +1,13 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
+import { AppShell } from '@/components/layout/AppShell'
 import { useAuth } from '@/hooks/useAuth'
-import Home from '@/routes/Home'
 import Login from '@/routes/Login'
 import Register from '@/routes/Register'
+import WorkspaceHome from '@/routes/WorkspaceHome'
+import WorkspaceIndex from '@/routes/WorkspaceIndex'
+import WorkspaceSettings from '@/routes/WorkspaceSettings'
 
 /**
  * Client-side route guards.
@@ -52,14 +55,28 @@ export default function App() {
           </RedirectIfAuthed>
         }
       />
+
       <Route
         path="/"
         element={
           <RequireAuth>
-            <Home />
+            <WorkspaceIndex />
           </RequireAuth>
         }
       />
+
+      <Route
+        path="/w/:workspaceId"
+        element={
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<WorkspaceHome />} />
+        <Route path="settings" element={<WorkspaceSettings />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
