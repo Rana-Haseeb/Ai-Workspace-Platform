@@ -102,7 +102,11 @@
     --card-foreground: oklch(0.984 0.003 247.9);
     --popover: oklch(0.250 0.038 266.2);
     --popover-foreground: oklch(0.984 0.003 247.9);
-    --primary: oklch(0.585 0.204 277.1);         /* indigo lifted to #6366F1 for dark contrast */
+    /* #5B54EA. Measured, not picked by eye: white on #6366F1 is only 4.47:1 and fails AA, while
+       #4338CA is too dark to separate from the page. This is the value where the white label
+       clears 4.5:1 (5.38) *and* the button shape clears 3.0:1 against the page (3.32, WCAG
+       1.4.11 non-text contrast). Changing it means re-running scripts/check_contrast.js. */
+    --primary: oklch(0.544 0.218 278.4);
     --primary-foreground: oklch(1.000 0.000 90);
     --secondary: oklch(0.372 0.039 257.3);
     --secondary-foreground: oklch(0.984 0.003 247.9);
@@ -114,7 +118,9 @@
     --destructive: oklch(0.711 0.166 22.2);      /* #F87171, red-600 fails AA on dark */
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.585 0.204 277.1);
+    --ring: oklch(0.544 0.218 278.4);
+    /* Charts keep the lighter #6366F1: a chart series carries no text on it, so the 4.5:1 rule
+       does not apply and the brighter value reads better against the dark canvas. */
     --chart-1: oklch(0.585 0.204 277.1);
     --chart-2: oklch(0.709 0.159 293.5);
     --chart-3: oklch(0.609 0.111 221.7);
@@ -122,12 +128,12 @@
     --chart-5: oklch(0.769 0.165 70.1);
     --sidebar: oklch(0.180 0.032 266.6);         /* #0B1120, one step below the page */
     --sidebar-foreground: oklch(0.984 0.003 247.9);
-    --sidebar-primary: oklch(0.585 0.204 277.1);
+    --sidebar-primary: oklch(0.544 0.218 278.4);
     --sidebar-primary-foreground: oklch(1.000 0.000 90);
     --sidebar-accent: oklch(0.279 0.037 260.0);
     --sidebar-accent-foreground: oklch(0.709 0.159 293.5);
     --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.585 0.204 277.1);
+    --sidebar-ring: oklch(0.544 0.218 278.4);
 }
 
 @layer base {

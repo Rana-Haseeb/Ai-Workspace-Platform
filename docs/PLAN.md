@@ -28,6 +28,18 @@ LLM layer ported from Week 4 (5 providers, cross-provider failover).
 | Deployment | Hugging Face Spaces, Docker — one container, uvicorn serves API + SPA |
 | Workflow | Approve each phase before it starts |
 
+**Progress:** Phase 0 complete (foundations, verified). Phase 1 complete (authentication and
+tenant isolation, verified). Next: Phase 2 — workspaces, assistant settings, app shell.
+
+Gates, all currently passing:
+
+```bash
+python -m pytest                    # 62 tests
+python scripts/verify_phase0.py     # schema, indexes, secrets hygiene, themes
+python scripts/verify_phase1.py     # hashing, tokens, 403 isolation
+node scripts/check_contrast.js      # WCAG AA in both themes
+```
+
 ---
 
 ## Design system

@@ -2,6 +2,7 @@
 python-dotenv>=1.0
 pydantic>=2.7
 pydantic-settings>=2.2
+email-validator>=2.2        # backs pydantic EmailStr
 
 # ---- Backend API ----
 fastapi>=0.115

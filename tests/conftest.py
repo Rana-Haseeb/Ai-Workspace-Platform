@@ -50,3 +50,64 @@ def db(engine):
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture
+def client(engine, monkeypatch):
+    """A TestClient whose requests run against the test database.
+
+    ``get_db`` is overridden rather than the engine being swapped globally, because the override
+    is exactly the seam FastAPI provides for this and it leaves the real application untouched.
+    Each request gets its own session from the same in-memory database, which mirrors production
+    (a session per request) instead of sharing one session across the whole test.
+    """
+    from fastapi.testclient import TestClient
+
+    # A fixed signing key so tokens stay valid across the requests inside one test, and so a
+    # test never depends on whatever happens to be in the developer's .env.
+    monkeypatch.setattr("core.config.settings.jwt_secret", "test-secret-key-not-for-real-use")
+
+    from api.deps import get_db
+    from api.main import create_app
+
+    TestSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+    def override_get_db():
+        session = TestSession()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app = create_app()
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def make_user(client):
+    """Register a user and return a callable-free handle: their id, email, and auth headers.
+
+    Returns headers rather than relying on the client's cookie jar so that two users can be
+    active in one test — which is precisely what the isolation test needs.
+    """
+    counter = {"n": 0}
+
+    def _make(email: str | None = None, password: str = "correct-horse-battery"):
+        counter["n"] += 1
+        address = email or f"user{counter['n']}@example.com"
+        response = client.post(
+            "/api/auth/register", json={"email": address, "password": password}
+        )
+        assert response.status_code == 201, response.text
+        body = response.json()
+        return {
+            "id": body["user"]["id"],
+            "email": address,
+            "password": password,
+            "headers": {"Authorization": f"Bearer {body['access_token']}"},
+        }
+
+    return _make
