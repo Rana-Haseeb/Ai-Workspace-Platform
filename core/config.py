@@ -102,7 +102,14 @@ PROVIDERS: dict[str, ProviderConfig] = {
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         api_key_env="GOOGLE_API_KEY",
         default_model="gemini-3.5-flash",
-        models=["gemini-3.5-flash", "gemini-3.6-flash", "gemini-2.0-flash"],
+        # The free-tier quota is per *day*, per *project*, per *model* — so each entry here has
+        # its own independent allowance and exhausting one does not touch the others. That makes
+        # the in-provider chain genuinely useful rather than decorative.
+        #
+        # `gemini-2.0-flash` was in this list and is deliberately not any more: it was the first
+        # model to run dry on the fellowship account, and a chain that leads with an exhausted
+        # model just adds a round trip before failing over.
+        models=["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"],
     ),
     "openrouter": ProviderConfig(
         label="OpenRouter (free — fallback only, 50 req/day)",

@@ -17,14 +17,37 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from core.config import settings
 
 
+def normalise_database_url(url: str) -> str:
+    """Point a bare ``postgresql://`` URL at psycopg 3.
+
+    Every hosted provider — Neon, Supabase, Aiven — hands out a URL starting ``postgresql://``,
+    and SQLAlchemy maps that to **psycopg2**, which this project does not install. Pasting the
+    provider's string verbatim would therefore fail at deployment with a ModuleNotFoundError,
+    which is a miserable thing to discover on the day you deploy.
+
+    Rewriting the scheme here means the string can be copied straight from the dashboard.
+    ``postgresql+psycopg://`` and other explicit drivers are left alone.
+    """
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    if url.startswith("postgres://"):
+        # Heroku-style scheme, still emitted by some providers.
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    return url
+
+
 def engine_kwargs(url: str) -> dict:
     """Connection arguments appropriate to the dialect in ``url``."""
     if url.startswith("sqlite"):
         return {"connect_args": {"check_same_thread": False}}
-    return {"pool_pre_ping": True, "pool_size": 5, "max_overflow": 10}
+    # pool_pre_ping matters more than usual on serverless Postgres: Neon scales to zero after
+    # a few minutes idle, so the first request after a quiet spell finds a dead connection.
+    # Pre-ping turns that into a transparent reconnect instead of a 500.
+    return {"pool_pre_ping": True, "pool_size": 5, "max_overflow": 10, "pool_recycle": 300}
 
 
-engine = create_engine(settings.database_url, **engine_kwargs(settings.database_url))
+DATABASE_URL = normalise_database_url(settings.database_url)
+engine = create_engine(DATABASE_URL, **engine_kwargs(DATABASE_URL))
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 

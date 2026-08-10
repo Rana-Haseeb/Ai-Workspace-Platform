@@ -9,7 +9,7 @@ something you said three sessions ago.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-CA4245?style=for-the-badge)](https://sqlalchemy.org)
-[![Tests](https://img.shields.io/badge/tests-161_passing-success?style=for-the-badge)](tests/)
+[![Tests](https://img.shields.io/badge/tests-201_passing-success?style=for-the-badge)](tests/)
 [![WCAG](https://img.shields.io/badge/WCAG-AA_verified-0F9D58?style=for-the-badge)](scripts/check_contrast.js)
 
 <samp>Visibility Bots Innovation Lab · AI Summer Fellowship 2026 · Track 2: NLP & AI Agents · **Week 5**</samp>
@@ -40,6 +40,7 @@ something you said three sessions ago.**
 - [API endpoints](#api-endpoints)
 - [Testing and verification](#testing-and-verification)
 - [How the knowledge base works](#how-the-knowledge-base-works)
+- [How memory works](#how-memory-works)
 - [Design system](#design-system)
 - [Measured performance](#measured-performance)
 - [Deployment](#deployment)
@@ -83,7 +84,7 @@ done until that output passes.
 | 2 | Workspace CRUD, the 8 assistant settings, the app shell | ✅ |
 | 3 | Persistent chat with token streaming | ✅ |
 | 4 | Knowledge base and document intelligence with citations | ✅ |
-| 5 | Long-term memory | ⬜ |
+| 5 | Long-term memory | ✅ |
 | 6 | Prompt library and reusable skills | ⬜ |
 | 7 | Dashboard and advanced features | ⬜ |
 | 8 | 40 evaluation scenarios, 6 experiments | ⬜ |
@@ -97,17 +98,19 @@ The full plan, including the specification and gate for every phase, is in
 **Currently passing:**
 
 ```
-161 tests passed
+201 tests passed
 PHASE 0 PASSED - 12 tables, 8 settings fields, 7 indexed keys, 2 themes.
 PHASE 1 PASSED - argon2 hashing, signed sessions, and 403 isolation verified.
 PHASE 2 PASSED - workspace CRUD, 8 assistant fields, validation, persistence.
 PHASE 3 PASSED - live replies, titling, history, streaming, search, persistence.
 PHASE 4 PASSED - real PDF ingested, embedded, retrieved, and cited by page.
+PHASE 5 PASSED - extracted live, ranked, injected across a restart, user-editable.
 All pairs meet WCAG AA.
 ```
 
-Phases 3 and 4 are the gates that call real providers, because what they verify is that a real
-reply arrives and that a real PDF becomes a checkable citation. The test suite stays offline.
+Phases 3, 4 and 5 are the gates that call real providers, because what they verify only means
+something live: that a reply arrives, that a real PDF becomes a checkable citation, and that a
+real model decides what is worth remembering. The test suite itself stays offline.
 
 ---
 
@@ -132,12 +135,14 @@ reply arrives and that a real PDF becomes a checkable citation. The test suite s
 | **Cited answers** | Every claim carries a numbered chip naming the file and page; clicking it opens the exact excerpt the model was given |
 | **Hybrid retrieval** | BM25 and vector search fused by rank, so exact terms and paraphrases both work |
 | **Graceful degradation** | If the embedding provider is down or rate limited, documents still ingest and keyword search still answers — the UI says "keyword only" rather than quietly getting worse |
+| **Long-term memory** | Preferences and durable facts are extracted from conversation automatically and applied to later sessions, in different conversations, after a restart |
+| **Memory you control** | Every remembered item is listed, editable, pinnable and deletable, with one button to forget everything |
+| **Visible recall** | A chip on each answer shows exactly which memories were applied, beside the document citations |
 | **Dark and light themes** | Dark by default, applied before first paint. Every colour pair verified against WCAG AA in both |
 
 ### Coming in later phases
 
-Long-term memory · prompt library with versioning · six reusable skills · usage dashboard ·
-conversation export.
+Prompt library with versioning · six reusable skills · usage dashboard · conversation export.
 
 ---
 
@@ -149,8 +154,8 @@ python-jose, pypdf, python-docx, numpy, rank-bm25, pytest.
 **Frontend** — React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui on Base UI,
 TanStack Query, React Router, lucide-react, Recharts.
 
-**Data** — SQLite locally and in tests, PostgreSQL (Supabase) in production. One set of models
-serves both.
+**Data** — SQLite locally and in tests, PostgreSQL (Neon) in production. One set of models
+serves both, verified against a real server.
 
 **Models** — seven OpenAI-compatible providers (Groq ×3 organisations, Google AI Studio,
 OpenRouter, xAI, OpenAI) behind one client, with automatic cross-provider failover.
@@ -164,6 +169,12 @@ them is one environment variable.
 **Cross-provider failover, carried over from Week 4.** A live deployment there hit its rate
 limit mid-run: 216 calls attempted, 164 refused, no second backend to fall to. Multi-user
 traffic makes that more likely, not less, so the provider chain came across unchanged.
+
+**Free-tier quotas are per day, per project, *per model*.** That last dimension is why the
+in-provider model list is worth having: exhausting `gemini-2.0-flash` leaves `gemini-3.5-flash`
+completely untouched. Diagnosing a 429 by testing one model and concluding "the key is dead" is
+wrong, and it was wrong here — the account that appeared to be out of quota had four working
+models the whole time.
 
 ---
 
@@ -396,6 +407,20 @@ Also nested under `/api/workspaces/{workspace_id}`.
 | `GET` | `/documents/{id}/chunks` | Every chunk in order — what a citation chip opens |
 | `DELETE` | `/documents/{id}` | Delete the row, its chunks, its vectors and the file |
 
+### Memory
+
+Nested under a workspace so it inherits the ownership check, but the data is **user-scoped**:
+memories with a null `workspace_id` appear in every workspace's list.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/memory` | Everything remembered here, ordered as it would be injected |
+| `GET` | `/memory/status` | Totals, how many are in context, whether memory is on |
+| `POST` | `/memory` | Add one by hand |
+| `PATCH` | `/memory/{id}` | Correct, re-weight, or pin |
+| `DELETE` | `/memory/{id}` | Forget one |
+| `DELETE` | `/memory` | Forget everything |
+
 ### Meta
 
 | Method | Path | Purpose |
@@ -445,6 +470,69 @@ a claim.
   embeddings
 - Deleting a document leaves memory learned from it intact
 - Editing a prompt creates a version instead of overwriting
+
+---
+
+## How memory works
+
+**Memory is not RAG.** They are the two questions this platform is built around, and merging
+them is the most common way to get both wrong.
+
+| | Knowledge base | Memory |
+|---|---|---|
+| Holds | fragments of a document | facts about the user |
+| Created by | uploading a file | a model reading the conversation |
+| Retrieved by | similarity to the question | **importance x recency, always** |
+| Lifetime | immutable until deleted | updated as the person changes |
+| Scope | one workspace | the user, optionally one workspace |
+
+### The retrieval difference is the substantive one
+
+A document chunk is fetched *because you asked about it*. A memory is injected **whether or not
+the question mentions it**.
+
+That is what makes "given what I told you last week" work when the current message never says
+what that was. No similarity function connects *"I prefer short answers"* to *"how does pgvector
+index?"* — so similarity is the wrong tool, and `memory_service.retrieve()` deliberately takes
+**no query argument at all**. A test asserts that, because it is the design, not an oversight.
+
+Ranking is `importance x 0.5^(age / 14 days)`, with pinned items placed beyond competition.
+Nothing ever decays to zero — a two-year-old preference still counts for something.
+
+### What gets remembered, and where it applies
+
+Extraction runs after a turn, reading the user's message only, and is shown the existing
+memories so it can avoid repeating itself. Messages under 25 characters are skipped — "ok" and
+"thanks" contain nothing durable and a model call for them is pure waste.
+
+**Preferences follow the person; facts stay in the workspace.** "Prefers British English" should
+not have to be re-learned in every workspace, while "this project targets Postgres 16" is wrong
+advice somewhere else. That split is one line in the extractor and it is what stops memory
+becoming cross-contamination.
+
+### Measured, live
+
+```
+[preference] Prefers concise answers under three sentences      imp 0.80  all workspaces
+[fact      ] Works as a backend engineer at a fintech company    imp 0.80  this workspace
+[preference] Prefers answers in British English                  imp 0.80  all workspaces
+```
+
+Then, in a **new conversation** in a **restarted process**, asked something that never mentions
+any of it:
+
+> **Q:** How should I store embeddings?
+> **A:** You can store embeddings in **your Postgres database** as arrays or vectors...
+
+Two sentences, honouring a preference stated once and never repeated.
+
+### The user owns it
+
+Memory is written automatically, which makes it the part of the platform most in need of a
+visible off switch. Everything extracted is listed with its importance, its rank, and whether it
+is currently in context; every item can be corrected, re-weighted, pinned or deleted, and one
+button forgets all of it. A system that silently accumulates claims about someone and offers no
+way to see them is one nobody should trust.
 
 ---
 
@@ -615,7 +703,33 @@ process is measuring your imports, not your model.
 *Arrives in Phase 11.* The plan: a multi-stage Dockerfile where Node builds `web/dist` and
 Python serves it, deployed to Hugging Face Spaces. Uvicorn serves the API and the built SPA from
 one origin, so the whole platform is one process in one container and the session cookie needs
-no cross-origin handling. `DATABASE_URL` points at Supabase PostgreSQL; the models do not change.
+no cross-origin handling.
+
+### The database half is already verified
+
+Production Postgres is not a Phase 11 unknown — the schema has been run against a real server:
+
+```
+Driver : postgresql+psycopg          Host: ep-...aws.neon.tech
+1. Connection          OK  [2.16s]   PostgreSQL 18.4
+2. Schema              OK  all 12 tables created [12/12 in 5.62s]
+3. Write/read/cascade  OK  JSON columns, vectors, cascade delete
+4. pgvector            OK  available on this server
+```
+
+Reproduce with `python scripts/check_postgres.py --from-env NEON_DATABASE_URL`. It creates
+everything, writes a full relationship tree, checks the cascade, and drops the tables again.
+
+**One trap it caught.** Every provider — Neon, Supabase, Aiven — hands out a URL beginning
+`postgresql://`, and SQLAlchemy maps that scheme to **psycopg2**, which this project does not
+install. Pasting the connection string as given fails with `ModuleNotFoundError` on the first
+query. `normalise_database_url` rewrites the scheme to `postgresql+psycopg://`, so a URL copied
+straight from a dashboard works. Four tests cover it, because this is exactly the kind of failure
+that only appears on deployment day.
+
+Serverless Postgres also scales to zero when idle, so pooled connections go stale: the engine
+uses `pool_pre_ping` and `pool_recycle=300` to make that a transparent reconnect rather than a
+500 on the first request after a quiet spell.
 
 ---
 
@@ -668,7 +782,16 @@ is a surprise.
   touching anything that calls it.
 - **Retrieval quality is not yet measured.** Phase 8's evaluation dataset is what turns "the
   citations look right" into a number.
-- **Phases 5–11 are not built.** The sidebar shows those sections disabled with the phase they
+- **Extraction adds a model call per substantial turn.** It runs after the reply is delivered so
+  the user never waits on it, but it is real cost. Phase 8's memory-on/off experiment measures
+  exactly what it buys.
+- **The extractor is a language model reading conversation**, so it will occasionally record
+  something subtly wrong. That is why every memory is editable and deletable — a memory that
+  cannot be corrected silently shapes every future answer.
+- **Memory has no semantic de-duplication.** "Prefers concise answers" and "Likes short replies"
+  would both be stored. The model is shown existing memories and mostly avoids this; the string
+  check behind it only catches exact near-matches.
+- **Phases 6–11 are not built.** The sidebar shows those sections disabled with the phase they
   arrive in, rather than hiding them.
 
 ---

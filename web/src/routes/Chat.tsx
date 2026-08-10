@@ -5,16 +5,26 @@ import { AlertCircle, Sparkles } from 'lucide-react'
 
 import { Composer } from '@/components/chat/Composer'
 import { MessageBubble } from '@/components/chat/MessageBubble'
-import { conversations, type Citation, type Message, type WorkspaceDetail } from '@/lib/api'
+import {
+  conversations,
+  type Citation,
+  type MemoryUsed,
+  type Message,
+  type WorkspaceDetail,
+} from '@/lib/api'
 
 /** A placeholder message object for text that is still arriving. */
-function draftMessage(content: string, citations: Citation[] = []): Message {
+function draftMessage(
+  content: string,
+  citations: Citation[] = [],
+  memoryUsed: MemoryUsed[] = [],
+): Message {
   return {
     id: -1,
     role: 'assistant',
     content,
     citations,
-    memory_used: [],
+    memory_used: memoryUsed,
     is_pinned: false,
     model: null,
     tokens_in: 0,
@@ -33,6 +43,7 @@ export default function Chat() {
 
   const [streamed, setStreamed] = useState<string | null>(null)
   const [streamCitations, setStreamCitations] = useState<Citation[]>([])
+  const [streamMemory, setStreamMemory] = useState<MemoryUsed[]>([])
   const [pending, setPending] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -62,6 +73,7 @@ export default function Chat() {
     setPending(text)
     setStreamed('')
     setStreamCitations([])
+    setStreamMemory([])
 
     const controller = new AbortController()
     abortRef.current = controller
@@ -70,7 +82,10 @@ export default function Chat() {
       for await (const event of conversations.stream(workspace.id, id, text, controller.signal)) {
         // Sources arrive in the opening event, before any text, so the reader can see what is
         // being consulted while the answer is still being written.
-        if (event.type === 'start') setStreamCitations(event.citations ?? [])
+        if (event.type === 'start') {
+          setStreamCitations(event.citations ?? [])
+          setStreamMemory(event.memory_used ?? [])
+        }
         if (event.type === 'token') setStreamed((current) => (current ?? '') + event.text)
         if (event.type === 'error') setError(event.detail)
       }
@@ -130,7 +145,7 @@ export default function Chat() {
           )}
           {streaming && (
             <MessageBubble
-              message={draftMessage(streamed ?? '', streamCitations)}
+              message={draftMessage(streamed ?? '', streamCitations, streamMemory)}
               assistantName={assistantName}
               streaming
             />

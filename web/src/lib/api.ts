@@ -157,12 +157,42 @@ export interface DocumentChunk {
   page: number | null
 }
 
+export interface MemoryItem {
+  id: number
+  kind: 'preference' | 'fact' | 'topic' | 'pinned'
+  content: string
+  importance: number
+  is_pinned: boolean
+  workspace_id: number | null
+  use_count: number
+  last_used_at: string | null
+  created_at: string
+  rank_score: number
+  in_context: boolean
+}
+
+export interface MemoryStatus {
+  total: number
+  pinned: number
+  in_context: number
+  by_kind: Record<string, number>
+  enabled: boolean
+  max_in_context: number
+}
+
+/** A memory that informed one answer, as attached to a message. */
+export interface MemoryUsed {
+  id: number
+  kind: string
+  content: string
+}
+
 export interface Message {
   id: number
   role: 'user' | 'assistant' | 'system'
   content: string
   citations: Citation[]
-  memory_used: unknown[]
+  memory_used: MemoryUsed[]
   is_pinned: boolean
   model: string | null
   tokens_in: number
@@ -196,6 +226,7 @@ export type StreamEvent =
       user_message_id: number
       citations: Citation[]
       retrieval_mode: string
+      memory_used: MemoryUsed[]
     }
   | { type: 'token'; text: string }
   | { type: 'done'; message_id: number; title: string; model: string | null; latency_ms: number; tokens_out: number }
@@ -277,6 +308,37 @@ export const documents = {
       method: 'POST',
       body: JSON.stringify({ query, top_k: topK }),
     }),
+}
+
+// ----------------------------------------------------------------------- memory
+export const memory = {
+  list: (workspaceId: number) =>
+    request<MemoryItem[]>(`/api/workspaces/${workspaceId}/memory`),
+
+  status: (workspaceId: number) =>
+    request<MemoryStatus>(`/api/workspaces/${workspaceId}/memory/status`),
+
+  create: (workspaceId: number, body: {
+    content: string; kind?: string; importance?: number; workspace_scoped?: boolean
+  }) =>
+    request<MemoryItem>(`/api/workspaces/${workspaceId}/memory`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  update: (workspaceId: number, id: number, changes: {
+    content?: string; kind?: string; importance?: number; is_pinned?: boolean
+  }) =>
+    request<MemoryItem>(`/api/workspaces/${workspaceId}/memory/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(changes),
+    }),
+
+  remove: (workspaceId: number, id: number) =>
+    request<void>(`/api/workspaces/${workspaceId}/memory/${id}`, { method: 'DELETE' }),
+
+  forgetAll: (workspaceId: number) =>
+    request<void>(`/api/workspaces/${workspaceId}/memory`, { method: 'DELETE' }),
 }
 
 // ----------------------------------------------------------------- conversations

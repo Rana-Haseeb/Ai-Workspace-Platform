@@ -19,8 +19,13 @@ from core.config import Settings, settings
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ["core", "db", "services", "skills", "api", "eval", "experiments"]
 
-# `settings.` followed by an identifier. Methods are included and filtered below.
-REFERENCE = re.compile(r"\bsettings\.([a-z_][a-z0-9_]*)")
+# `settings.` followed by an identifier, but only where `settings` is the module-level config
+# singleton — never `workspace.settings.use_memory`, which is the AssistantSettings *row*.
+#
+# The two are genuinely different objects that happen to share a name: `core.config.settings` is
+# deployment configuration, `workspace.settings` is the per-workspace assistant row. The negative
+# lookbehind is what keeps this test from reporting the row's columns as missing config.
+REFERENCE = re.compile(r"(?<![.\w])settings\.([a-z_][a-z0-9_]*)")
 
 
 def _referenced_names() -> dict[str, set[str]]:

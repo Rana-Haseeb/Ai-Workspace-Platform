@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import Chat from '@/routes/Chat'
 import Documents from '@/routes/Documents'
 import Login from '@/routes/Login'
+import Memory from '@/routes/Memory'
 import Register from '@/routes/Register'
 import WorkspaceHome from '@/routes/WorkspaceHome'
 import WorkspaceIndex from '@/routes/WorkspaceIndex'
@@ -78,6 +79,7 @@ export default function App() {
         <Route index element={<WorkspaceHome />} />
         <Route path="c/:conversationId" element={<Chat />} />
         <Route path="documents" element={<Documents />} />
+        <Route path="memory" element={<Memory />} />
         <Route path="settings" element={<WorkspaceSettings />} />
       </Route>
 

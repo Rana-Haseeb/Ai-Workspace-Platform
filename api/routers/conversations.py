@@ -27,7 +27,7 @@ from sqlalchemy import select
 from api.deps import CurrentUser, DbSession, OwnedWorkspace
 from core.logging import get_logger
 from db.base import SessionLocal
-from db.models import Conversation, Log, Message
+from db.models import Conversation, Log, MemoryItem, Message, Workspace
 from schemas.conversation import (
     ChatRequest,
     ChatResponse,
@@ -37,7 +37,7 @@ from schemas.conversation import (
     ConversationUpdate,
     MessageResponse,
 )
-from services import chat_service
+from services import chat_service, memory_service
 from services.llm_service import LLMError
 
 log = get_logger("conversations")
@@ -176,8 +176,14 @@ def stream_message(
     # generating, rather than revealing them at the end.
     retrieved = chat_service.retrieve_context(db, workspace, settings_row, payload.content)
     citations = [c.to_dict() for c in retrieved.citations]
+
+    memories = chat_service.recall_memories(db, workspace, settings_row, user.id)
+    memory_used = [{"id": m.id, "kind": m.kind, "content": m.content} for m in memories]
+    memory_ids = [m.id for m in memories]
+
     messages = chat_service.build_messages(
-        settings_row, history, payload.content, retrieved.context_block()
+        settings_row, history, payload.content,
+        retrieved.context_block(), memory_service.context_block(memories),
     )
 
     user_message = chat_service.record_user_message(db, conversation, payload.content)
@@ -197,6 +203,9 @@ def stream_message(
                 "user_message_id": user_message_id,
                 "citations": citations,
                 "retrieval_mode": retrieved.mode,
+                # Sent up front alongside the citations, so the context panel can show what the
+                # assistant is drawing on before a single word of the answer arrives.
+                "memory_used": memory_used,
             }) + "\n"
 
             client = chat_service.llm_for(settings_row)
@@ -229,6 +238,7 @@ def stream_message(
                 latency_ms=latency_ms,
                 user_id=user_id_value,
                 citations=citations,
+                memory_used=memory_used,
             )
 
             title = conversation_row.title
@@ -236,6 +246,12 @@ def stream_message(
                 title = chat_service.generate_title(settings_row, payload.content)
                 conversation_row.title = title
                 session.commit()
+
+            if memory_ids:
+                memory_service.mark_used(
+                    session,
+                    [m for m in (session.get(MemoryItem, i) for i in memory_ids) if m],
+                )
 
             yield json.dumps({
                 "type": "done",
@@ -245,6 +261,16 @@ def stream_message(
                 "latency_ms": latency_ms,
                 "tokens_out": assistant_message.tokens_out,
             }) + "\n"
+
+            # Extraction runs *after* the done event, so the user never waits on it. The stream
+            # stays open a moment longer, but the client already has everything it needs and has
+            # stopped reading.
+            workspace_row = session.get(Workspace, workspace_id_value)
+            if workspace_row is not None:
+                memory_service.extract_and_store(
+                    session, user_id_value, workspace_row,
+                    workspace_row.settings, payload.content,
+                )
         finally:
             session.close()
 

@@ -19,9 +19,10 @@ import uuid
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from core.logging import get_logger
 from db.models import AssistantSettings, Conversation, Log, Message, Workspace
-from services import retrieval_service
+from services import memory_service, retrieval_service
 from services.llm_service import get_llm
 
 log = get_logger("chat")
@@ -83,16 +84,26 @@ def build_messages(
     history: list[Message],
     user_content: str,
     context_block: str = "",
+    memory_block: str = "",
 ) -> list[tuple[str, str]]:
     """The full ``(role, content)`` list for one turn.
 
-    Retrieved document excerpts go in a **second system message**, after the workspace's own
-    system prompt and before the history. Two reasons: the excerpts change every turn while the
-    system prompt does not, so keeping them separate makes each independently editable; and the
-    grounding rules ("cite the number, do not invent one") sit with the material they govern
-    rather than being buried at the end of a long instruction block.
+    Four blocks, in this order, and the order is deliberate:
+
+    1. **The workspace's system prompt** — who the assistant is. Stable across turns.
+    2. **Memory** — what is known about the user. Changes slowly, applies to every question.
+    3. **Document excerpts** — what is relevant to *this* question. Changes every turn.
+    4. **History, then the new message.**
+
+    Memory before documents because it is the smaller, more general instruction: it says how to
+    answer, while the excerpts say what to answer from. Keeping each in its own system message
+    rather than concatenating means the grounding rules stay attached to the material they
+    govern, and any one block can be turned off without disturbing the others.
     """
     messages: list[tuple[str, str]] = [("system", build_system_prompt(settings_row))]
+
+    if memory_block:
+        messages.append(("system", memory_block))
 
     if context_block:
         messages.append((
@@ -106,6 +117,22 @@ def build_messages(
             messages.append((message.role, message.content))
     messages.append(("user", user_content))
     return messages
+
+
+def recall_memories(db: Session, workspace: Workspace, settings_row: AssistantSettings, user_id: int):
+    """Memories to inject for this turn, or an empty list.
+
+    Note the absence of a question argument: memory retrieval does not depend on what was asked.
+    That is the whole point — a stated preference has to apply to a question that never mentions
+    it.
+    """
+    if not settings_row.use_memory or not settings.memory_enabled:
+        return []
+    try:
+        return memory_service.retrieve(db, user_id, workspace.id)
+    except Exception as error:  # noqa: BLE001
+        log.warning("Memory recall failed, answering without it: %s", error)
+        return []
 
 
 def retrieve_context(
@@ -283,6 +310,7 @@ def record_assistant_message(
     latency_ms: int,
     user_id: int,
     citations: list | None = None,
+    memory_used: list | None = None,
 ) -> Message:
     """Persist the reply and log the call.
 
@@ -297,6 +325,9 @@ def record_assistant_message(
         # Denormalised on purpose: the message must keep rendering its citations even after the
         # document is deleted, so what was cited at the time stays visible.
         citations=citations or [],
+        # Which memories informed this answer. Denormalised alongside citations so the context
+        # panel can show "this used what you told me last week" for any past message.
+        memory_used=memory_used or [],
         model=model,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
@@ -336,7 +367,11 @@ def complete_turn(
     user_message = record_user_message(db, conversation, user_content)
 
     retrieved = retrieve_context(db, workspace, settings_row, user_content)
-    messages = build_messages(settings_row, history, user_content, retrieved.context_block())
+    memories = recall_memories(db, workspace, settings_row, user_id)
+    messages = build_messages(
+        settings_row, history, user_content,
+        retrieved.context_block(), memory_service.context_block(memories),
+    )
 
     client = llm_for(settings_row)
     started = time.perf_counter()
@@ -354,10 +389,20 @@ def complete_turn(
         latency_ms=latency_ms,
         user_id=user_id,
         citations=[c.to_dict() for c in retrieved.citations],
+        memory_used=[
+            {"id": m.id, "kind": m.kind, "content": m.content} for m in memories
+        ],
     )
+
+    if memories:
+        memory_service.mark_used(db, memories)
 
     if is_first:
         conversation.title = generate_title(settings_row, user_content)
         db.commit()
+
+    # Extraction runs last, after the reply is safely stored, so a failure here costs nothing
+    # that mattered.
+    memory_service.extract_and_store(db, user_id, workspace, settings_row, user_content)
 
     return user_message, assistant_message
