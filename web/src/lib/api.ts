@@ -120,11 +120,48 @@ export const auth = {
   me: () => request<User>('/api/auth/me'),
 }
 
+export interface Citation {
+  chunk_id: number
+  document_id: number
+  filename: string
+  page: number | null
+  snippet: string
+  score: number
+}
+
+export interface DocumentRow {
+  id: number
+  filename: string
+  mime_type: string
+  size_bytes: number
+  page_count: number
+  chunk_count: number
+  status: 'pending' | 'processing' | 'ready' | 'failed'
+  error: string | null
+  created_at: string
+}
+
+export interface KnowledgeBaseStatus {
+  documents: number
+  chunks: number
+  embedded_chunks: number
+  embedding_backend: string
+  retrieval_mode: string
+  semantic_search_available: boolean
+}
+
+export interface DocumentChunk {
+  id: number
+  ordinal: number
+  text: string
+  page: number | null
+}
+
 export interface Message {
   id: number
   role: 'user' | 'assistant' | 'system'
   content: string
-  citations: unknown[]
+  citations: Citation[]
   memory_used: unknown[]
   is_pinned: boolean
   model: string | null
@@ -153,7 +190,13 @@ export interface ConversationDetail extends Conversation {
 
 /** One line of the NDJSON chat stream. */
 export type StreamEvent =
-  | { type: 'start'; conversation_id: number; user_message_id: number }
+  | {
+      type: 'start'
+      conversation_id: number
+      user_message_id: number
+      citations: Citation[]
+      retrieval_mode: string
+    }
   | { type: 'token'; text: string }
   | { type: 'done'; message_id: number; title: string; model: string | null; latency_ms: number; tokens_out: number }
   | { type: 'error'; detail: string }
@@ -188,6 +231,51 @@ export const workspaces = {
     request<AssistantSettings>(`/api/workspaces/${id}/settings`, {
       method: 'PATCH',
       body: JSON.stringify(changes),
+    }),
+}
+
+// -------------------------------------------------------------------- documents
+export const documents = {
+  list: (workspaceId: number) =>
+    request<DocumentRow[]>(`/api/workspaces/${workspaceId}/documents`),
+
+  status: (workspaceId: number) =>
+    request<KnowledgeBaseStatus>(`/api/workspaces/${workspaceId}/documents/status`),
+
+  /**
+   * Upload one file.
+   *
+   * No `Content-Type` header on purpose: the browser must set it itself so it can add the
+   * multipart boundary. Setting it by hand produces a body the server cannot parse.
+   */
+  async upload(workspaceId: number, file: File): Promise<DocumentRow> {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await fetch(`/api/workspaces/${workspaceId}/documents`, {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    })
+    if (!response.ok) throw new ApiError(response.status, await errorMessage(response))
+    return response.json() as Promise<DocumentRow>
+  },
+
+  remove: (workspaceId: number, id: number) =>
+    request<void>(`/api/workspaces/${workspaceId}/documents/${id}`, { method: 'DELETE' }),
+
+  chunks: (workspaceId: number, id: number) =>
+    request<DocumentChunk[]>(`/api/workspaces/${workspaceId}/documents/${id}/chunks`),
+
+  search: (workspaceId: number, query: string, topK = 6) =>
+    request<{
+      query: string
+      mode: string
+      citations: Citation[]
+      took_ms: number
+      vector_error: string | null
+    }>(`/api/workspaces/${workspaceId}/documents/search`, {
+      method: 'POST',
+      body: JSON.stringify({ query, top_k: topK }),
     }),
 }
 

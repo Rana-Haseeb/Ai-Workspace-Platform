@@ -190,7 +190,7 @@ class Settings(BaseModel):
     embedding_provider: str = Field(
         default_factory=lambda: os.getenv("EMBEDDING_PROVIDER", "google"))
     embedding_model: str = Field(
-        default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
+        default_factory=lambda: os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"))
     embedding_dim: int = Field(default_factory=lambda: _int("EMBEDDING_DIM", 768))
     chunk_size: int = Field(default_factory=lambda: _int("CHUNK_SIZE", 800))
     chunk_overlap: int = Field(default_factory=lambda: _int("CHUNK_OVERLAP", 120))

@@ -5,15 +5,15 @@ import { AlertCircle, Sparkles } from 'lucide-react'
 
 import { Composer } from '@/components/chat/Composer'
 import { MessageBubble } from '@/components/chat/MessageBubble'
-import { conversations, type Message, type WorkspaceDetail } from '@/lib/api'
+import { conversations, type Citation, type Message, type WorkspaceDetail } from '@/lib/api'
 
 /** A placeholder message object for text that is still arriving. */
-function draftMessage(content: string): Message {
+function draftMessage(content: string, citations: Citation[] = []): Message {
   return {
     id: -1,
     role: 'assistant',
     content,
-    citations: [],
+    citations,
     memory_used: [],
     is_pinned: false,
     model: null,
@@ -32,6 +32,7 @@ export default function Chat() {
   const queryClient = useQueryClient()
 
   const [streamed, setStreamed] = useState<string | null>(null)
+  const [streamCitations, setStreamCitations] = useState<Citation[]>([])
   const [pending, setPending] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -60,12 +61,16 @@ export default function Chat() {
     setError(null)
     setPending(text)
     setStreamed('')
+    setStreamCitations([])
 
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
       for await (const event of conversations.stream(workspace.id, id, text, controller.signal)) {
+        // Sources arrive in the opening event, before any text, so the reader can see what is
+        // being consulted while the answer is still being written.
+        if (event.type === 'start') setStreamCitations(event.citations ?? [])
         if (event.type === 'token') setStreamed((current) => (current ?? '') + event.text)
         if (event.type === 'error') setError(event.detail)
       }
@@ -125,7 +130,7 @@ export default function Chat() {
           )}
           {streaming && (
             <MessageBubble
-              message={draftMessage(streamed ?? '')}
+              message={draftMessage(streamed ?? '', streamCitations)}
               assistantName={assistantName}
               streaming
             />

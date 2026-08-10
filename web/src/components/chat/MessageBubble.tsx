@@ -1,5 +1,6 @@
 import { Pin, Sparkles } from 'lucide-react'
 
+import { CitationChips } from '@/components/chat/CitationChips'
 import type { Message } from '@/lib/api'
 
 /**
@@ -77,6 +78,10 @@ export function MessageBubble({
             />
           )}
         </p>
+
+        {/* Shown during streaming too: the sources are known before the answer is written, and
+            seeing what is being consulted is reassuring while you wait. */}
+        <CitationChips citations={message.citations} />
       </div>
     </div>
   )

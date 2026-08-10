@@ -20,7 +20,7 @@ import type { WorkspaceDetail } from '@/lib/api'
  * would make the product look smaller than it is; disabling them states plainly what exists now.
  */
 const SECTIONS = [
-  { to: 'documents', label: 'Documents', icon: FileText, ready: false, phase: 'P4' },
+  { to: 'documents', label: 'Documents', icon: FileText, ready: true, phase: '' },
   { to: 'memory', label: 'Memory', icon: BrainCircuit, ready: false, phase: 'P5' },
   { to: 'prompts', label: 'Prompts', icon: Library, ready: false, phase: 'P6' },
   { to: 'skills', label: 'Skills', icon: Sparkles, ready: false, phase: 'P6' },

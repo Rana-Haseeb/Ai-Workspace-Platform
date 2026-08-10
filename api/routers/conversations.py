@@ -170,7 +170,15 @@ def stream_message(
     settings_row = workspace.settings
     history = chat_service.history_for(db, conversation.id)
     is_first = len(history) == 0
-    messages = chat_service.build_messages(settings_row, history, payload.content)
+
+    # Retrieval happens before the response starts, so the citations can be sent to the client
+    # up front — the UI shows which sources are being consulted while the answer is still
+    # generating, rather than revealing them at the end.
+    retrieved = chat_service.retrieve_context(db, workspace, settings_row, payload.content)
+    citations = [c.to_dict() for c in retrieved.citations]
+    messages = chat_service.build_messages(
+        settings_row, history, payload.content, retrieved.context_block()
+    )
 
     user_message = chat_service.record_user_message(db, conversation, payload.content)
     user_message_id = user_message.id
@@ -187,6 +195,8 @@ def stream_message(
                 "type": "start",
                 "conversation_id": conversation_id_value,
                 "user_message_id": user_message_id,
+                "citations": citations,
+                "retrieval_mode": retrieved.mode,
             }) + "\n"
 
             client = chat_service.llm_for(settings_row)
@@ -218,6 +228,7 @@ def stream_message(
                 tokens_out=len(reply) // 4,
                 latency_ms=latency_ms,
                 user_id=user_id_value,
+                citations=citations,
             )
 
             title = conversation_row.title

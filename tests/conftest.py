@@ -53,7 +53,7 @@ def db(engine):
 
 
 @pytest.fixture
-def client(engine, monkeypatch):
+def client(engine, monkeypatch, tmp_path):
     """A TestClient whose requests run against the test database.
 
     ``get_db`` is overridden rather than the engine being swapped globally, because the override
@@ -79,10 +79,16 @@ def client(engine, monkeypatch):
         finally:
             session.close()
 
-    # The streaming endpoint opens its own session, because the request-scoped one is already
-    # closed by the time the generator runs. Point that factory at the test database too, or
-    # every streaming test would silently write to the developer's real workspace.db.
+    # Two places deliberately open their own session rather than using the request-scoped one:
+    # the streaming endpoint (the request's session is closed before the generator finishes) and
+    # document ingestion (it runs as a background task after the response). Both must point at
+    # the test database, or those code paths would silently touch the developer's workspace.db.
     monkeypatch.setattr("api.routers.conversations.SessionLocal", TestSession)
+    monkeypatch.setattr("api.routers.documents.SessionLocal", TestSession)
+
+    # Uploads land in a temp directory that vanishes with the test, so a run never leaves files
+    # behind in data/uploads.
+    monkeypatch.setattr("core.config.settings.upload_dir", tmp_path / "uploads")
 
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db

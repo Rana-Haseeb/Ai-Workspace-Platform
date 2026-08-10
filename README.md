@@ -9,7 +9,7 @@ something you said three sessions ago.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-CA4245?style=for-the-badge)](https://sqlalchemy.org)
-[![Tests](https://img.shields.io/badge/tests-124_passing-success?style=for-the-badge)](tests/)
+[![Tests](https://img.shields.io/badge/tests-161_passing-success?style=for-the-badge)](tests/)
 [![WCAG](https://img.shields.io/badge/WCAG-AA_verified-0F9D58?style=for-the-badge)](scripts/check_contrast.js)
 
 <samp>Visibility Bots Innovation Lab · AI Summer Fellowship 2026 · Track 2: NLP & AI Agents · **Week 5**</samp>
@@ -39,6 +39,7 @@ something you said three sessions ago.**
 - [Installation](#installation)
 - [API endpoints](#api-endpoints)
 - [Testing and verification](#testing-and-verification)
+- [How the knowledge base works](#how-the-knowledge-base-works)
 - [Design system](#design-system)
 - [Measured performance](#measured-performance)
 - [Deployment](#deployment)
@@ -81,7 +82,7 @@ done until that output passes.
 | 1 | Authentication, argon2 hashing, JWT sessions, tenant isolation | ✅ |
 | 2 | Workspace CRUD, the 8 assistant settings, the app shell | ✅ |
 | 3 | Persistent chat with token streaming | ✅ |
-| 4 | Knowledge base and document intelligence with citations | ⬜ |
+| 4 | Knowledge base and document intelligence with citations | ✅ |
 | 5 | Long-term memory | ⬜ |
 | 6 | Prompt library and reusable skills | ⬜ |
 | 7 | Dashboard and advanced features | ⬜ |
@@ -96,16 +97,17 @@ The full plan, including the specification and gate for every phase, is in
 **Currently passing:**
 
 ```
-124 tests passed
+161 tests passed
 PHASE 0 PASSED - 12 tables, 8 settings fields, 7 indexed keys, 2 themes.
 PHASE 1 PASSED - argon2 hashing, signed sessions, and 403 isolation verified.
 PHASE 2 PASSED - workspace CRUD, 8 assistant fields, validation, persistence.
 PHASE 3 PASSED - live replies, titling, history, streaming, search, persistence.
+PHASE 4 PASSED - real PDF ingested, embedded, retrieved, and cited by page.
 All pairs meet WCAG AA.
 ```
 
-Phase 3's gate is the only one that calls a real provider, because what it verifies is that a
-real reply arrives, is stored, and is still there afterwards. The test suite stays offline.
+Phases 3 and 4 are the gates that call real providers, because what they verify is that a real
+reply arrives and that a real PDF becomes a checkable citation. The test suite stays offline.
 
 ---
 
@@ -126,12 +128,16 @@ real reply arrives, is stored, and is still there afterwards. The test suite sta
 | **Search** | Matches conversation titles *and* message bodies, so a half-remembered phrase finds the thread |
 | **Rename, pin, tag, delete** | Pinned conversations sort first; tags are de-duplicated and capped |
 | **Per-message usage** | Model, token counts and latency recorded on every reply and mirrored into `logs` |
+| **Document upload** | PDF, Word, text and Markdown, drag-and-drop. Parsed and embedded in the background so the browser is never blocked |
+| **Cited answers** | Every claim carries a numbered chip naming the file and page; clicking it opens the exact excerpt the model was given |
+| **Hybrid retrieval** | BM25 and vector search fused by rank, so exact terms and paraphrases both work |
+| **Graceful degradation** | If the embedding provider is down or rate limited, documents still ingest and keyword search still answers — the UI says "keyword only" rather than quietly getting worse |
 | **Dark and light themes** | Dark by default, applied before first paint. Every colour pair verified against WCAG AA in both |
 
 ### Coming in later phases
 
-Document upload with cited answers · long-term memory · prompt library with versioning ·
-six reusable skills · usage dashboard · conversation export.
+Long-term memory · prompt library with versioning · six reusable skills · usage dashboard ·
+conversation export.
 
 ---
 
@@ -377,6 +383,19 @@ stream should surface, not silently replay. One JSON object per line is simpler 
 
 Stream events: `start` → `token`* → `done`, or `error` in place of `done`.
 
+### Documents
+
+Also nested under `/api/workspaces/{workspace_id}`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/documents` | Upload a file. Returns immediately; parsing runs in the background |
+| `GET` | `/documents` | List, with ingestion status |
+| `GET` | `/documents/status` | What the knowledge base can currently do |
+| `POST` | `/documents/search` | Hybrid search, returns citations |
+| `GET` | `/documents/{id}/chunks` | Every chunk in order — what a citation chip opens |
+| `DELETE` | `/documents/{id}` | Delete the row, its chunks, its vectors and the file |
+
 ### Meta
 
 | Method | Path | Purpose |
@@ -470,6 +489,69 @@ OS to reduce motion get a static interface, not a slower one.
 
 ---
 
+## How the knowledge base works
+
+```
+upload ─► validate ─► store bytes ─► row created (pending) ─► response returns
+                                              │
+                                    background task
+                                              ▼
+                         extract text, page by page (pypdf / python-docx)
+                                              ▼
+                         chunk within each page, ~800 chars, 120 overlap
+                                              ▼
+                         embed in batches (gemini-embedding-001, 768d)
+                                              ▼
+                                       status: ready
+```
+
+### Five decisions worth defending
+
+**Chunks never span a page.** Chunking happens *within* a page, not across the document. A chunk
+built from two pages would have to cite both or lie about one, and a citation that is only mostly
+right is worse than one that is narrower. This is what makes "page 103" checkable.
+
+**Hybrid retrieval, fused by rank.** Embeddings are good at meaning and bad at exact strings — a
+query for `pgvector` or `ISO 27001` often ranks a paragraph *about* the topic above the one that
+names it. BM25 is the reverse. Reciprocal Rank Fusion combines them using only each result's
+*position*, because a cosine similarity and a BM25 score are not on the same scale and
+normalising them against each other is guesswork that changes with every corpus.
+
+**Relevance is decided by token overlap, not by BM25's score.** BM25's IDF term goes negative for
+any word appearing in more than half the corpus. On a workspace holding one short document — a
+new user, or a demo — every genuinely matching chunk scores below zero, and the obvious
+`score > 0` filter discards exactly the results the user wanted. Overlap decides *whether* a
+chunk is a candidate; BM25 decides *what order* the candidates come in.
+
+**768 dimensions, not the model's native 3072.** `gemini-embedding-001` is trained so a truncated
+prefix is still a usable embedding. 768 stores four times smaller — which matters when the vector
+lives in a JSON column — and measurably still separates relevant from irrelevant text: 0.77
+cosine against a matching passage versus 0.46 against an unrelated one.
+
+**Asymmetric embedding.** A question and a passage are embedded with different `taskType` values.
+The same sentence means something different as a query than as a document, and skipping this is
+one of the most common reasons a working RAG pipeline retrieves badly.
+
+### Vectors are stored as JSON, and that is deliberate
+
+Similarity is computed in numpy behind a `VectorStore` interface. At a few thousand chunks that is
+a single small matrix multiply — under a millisecond — and it runs identically on SQLite and
+PostgreSQL with no extension.
+
+It does not scale to millions of chunks, and it is not meant to. When it stops being enough, the
+answer is a second implementation of the same interface backed by pgvector, and the only code
+that changes is the one line in `get_vector_store()`. That is the honest answer to "how would you
+scale the knowledge base?".
+
+### Degradation is a feature
+
+The embedding provider will be rate limited eventually — mid-build, this one returned HTTP 429
+partway through a 149-chunk PDF. When that happens, the chunks are still stored, the document is
+still searchable by keyword, the row records why vectors are missing, and the UI says
+**"keyword only"** instead of quietly returning worse results. A test asserts this path.
+
+---
+
 ## Measured performance
 
 Numbers from this machine against Groq, not estimates. Reproduce with
@@ -480,6 +562,25 @@ Numbers from this machine against Groq, not estimates. Reproduce with
 | `llama-3.3-70b-versatile` | 0.24s | 0.17s | 0.19s |
 | `openai/gpt-oss-120b` | 0.40s | 0.43s | 0.61s |
 | `openai/gpt-oss-20b` | 0.43s | 0.17s | 0.18s |
+
+### Document ingestion and retrieval
+
+Measured on the 129-page fellowship handbook (969 KB). Reproduce with
+`python scripts/verify_phase4.py`.
+
+| Step | Measured |
+|---|---|
+| Parse + chunk 129 pages | 6.2s → 149 chunks |
+| Embed 149 chunks (8 batches, paced) | 20.5s |
+| Total ingestion | 26.8s (~6 chunks/s) |
+| BM25 search | **26ms** |
+| Vector search | 678ms |
+| Hybrid search | 655ms |
+| Cited chat answer, end to end | 2.9s |
+
+BM25 is 25x faster than vector search because it never leaves the process — the vector path pays
+a network round trip to embed the *query*. Hybrid costs about the same as vector alone, since the
+two run against the same query embedding.
 
 ### The cold start that was hiding in these numbers
 
@@ -557,7 +658,17 @@ is a surprise.
 - **History is trimmed by turn count, not tokens.** The last 20 messages are replayed. A very
   long single message could still crowd the window; Phase 8's conversation-length experiment
   measures what this costs.
-- **Phases 4–11 are not built.** The sidebar shows those sections disabled with the phase they
+- **Scanned PDFs produce nothing.** Text extraction has no OCR, so an image-only PDF ingests as
+  zero chunks and says so rather than appearing to work.
+- **Embedding rate limits are real.** The free Google tier is a per-minute allowance; a large
+  upload can exhaust it. Batches are paced and retries honour the API's own `retryDelay`, but a
+  very large document may still finish keyword-only and need re-uploading later.
+- **Vector search loads every vector in the workspace per query.** Fine at thousands of chunks,
+  wrong at millions. The `VectorStore` interface exists so pgvector can replace it without
+  touching anything that calls it.
+- **Retrieval quality is not yet measured.** Phase 8's evaluation dataset is what turns "the
+  citations look right" into a number.
+- **Phases 5–11 are not built.** The sidebar shows those sections disabled with the phase they
   arrive in, rather than hiding them.
 
 ---

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from core.logging import get_logger
 from db.models import AssistantSettings, Conversation, Log, Message, Workspace
+from services import retrieval_service
 from services.llm_service import get_llm
 
 log = get_logger("chat")
@@ -78,15 +79,51 @@ def build_system_prompt(settings_row: AssistantSettings) -> str:
 
 
 def build_messages(
-    settings_row: AssistantSettings, history: list[Message], user_content: str
+    settings_row: AssistantSettings,
+    history: list[Message],
+    user_content: str,
+    context_block: str = "",
 ) -> list[tuple[str, str]]:
-    """The full ``(role, content)`` list for one turn: system prompt, recent history, new message."""
+    """The full ``(role, content)`` list for one turn.
+
+    Retrieved document excerpts go in a **second system message**, after the workspace's own
+    system prompt and before the history. Two reasons: the excerpts change every turn while the
+    system prompt does not, so keeping them separate makes each independently editable; and the
+    grounding rules ("cite the number, do not invent one") sit with the material they govern
+    rather than being buried at the end of a long instruction block.
+    """
     messages: list[tuple[str, str]] = [("system", build_system_prompt(settings_row))]
+
+    if context_block:
+        messages.append((
+            "system",
+            f"{retrieval_service.GROUNDING_INSTRUCTION}\n\n"
+            f"Excerpts from the user's documents:\n\n{context_block}",
+        ))
+
     for message in history[-HISTORY_LIMIT:]:
         if message.role in {"user", "assistant"}:
             messages.append((message.role, message.content))
     messages.append(("user", user_content))
     return messages
+
+
+def retrieve_context(
+    db: Session, workspace: Workspace, settings_row: AssistantSettings, question: str
+):
+    """Document excerpts for this question, or an empty result.
+
+    Returns an empty result — never raises — when the knowledge base is switched off for the
+    workspace or when retrieval fails. An answer without citations is a worse answer; an error
+    page is not an answer at all.
+    """
+    if not settings_row.use_knowledge_base:
+        return retrieval_service.RetrievalResult(mode="disabled")
+    try:
+        return retrieval_service.retrieve(db, workspace.id, question)
+    except Exception as error:  # noqa: BLE001
+        log.warning("Retrieval failed, answering without documents: %s", error)
+        return retrieval_service.RetrievalResult(mode="failed", vector_error=str(error)[:200])
 
 
 def llm_for(settings_row: AssistantSettings, agent_id: str = "chat"):
@@ -245,6 +282,7 @@ def record_assistant_message(
     tokens_out: int,
     latency_ms: int,
     user_id: int,
+    citations: list | None = None,
 ) -> Message:
     """Persist the reply and log the call.
 
@@ -256,6 +294,9 @@ def record_assistant_message(
         conversation_id=conversation.id,
         role="assistant",
         content=content,
+        # Denormalised on purpose: the message must keep rendering its citations even after the
+        # document is deleted, so what was cited at the time stays visible.
+        citations=citations or [],
         model=model,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
@@ -294,9 +335,12 @@ def complete_turn(
 
     user_message = record_user_message(db, conversation, user_content)
 
+    retrieved = retrieve_context(db, workspace, settings_row, user_content)
+    messages = build_messages(settings_row, history, user_content, retrieved.context_block())
+
     client = llm_for(settings_row)
     started = time.perf_counter()
-    reply = client.chat(build_messages(settings_row, history, user_content))
+    reply = client.chat(messages)
     latency_ms = int((time.perf_counter() - started) * 1000)
 
     assistant_message = record_assistant_message(
@@ -305,10 +349,11 @@ def complete_turn(
         reply,
         model=client.last_used_model,
         provider=client.last_used_provider,
-        tokens_in=sum(len(c) for _, c in build_messages(settings_row, history, user_content)) // 4,
+        tokens_in=sum(len(c) for _, c in messages) // 4,
         tokens_out=len(reply) // 4,
         latency_ms=latency_ms,
         user_id=user_id,
+        citations=[c.to_dict() for c in retrieved.citations],
     )
 
     if is_first:
