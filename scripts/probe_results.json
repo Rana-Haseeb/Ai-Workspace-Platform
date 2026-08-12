@@ -6,18 +6,18 @@
         "model": "openai/gpt-oss-120b",
         "completion": {
           "ok": true,
-          "seconds": 3.45,
+          "seconds": 4.03,
           "error": "",
           "usage": {}
         },
         "structured": {
           "ok": true,
-          "seconds": 0.88,
+          "seconds": 1.0,
           "error": ""
         },
         "tool_calling": {
           "ok": true,
-          "seconds": 0.47,
+          "seconds": 0.49,
           "error": ""
         },
         "usable": true
@@ -26,18 +26,18 @@
         "model": "openai/gpt-oss-20b",
         "completion": {
           "ok": true,
-          "seconds": 0.44,
+          "seconds": 0.4,
           "error": "",
           "usage": {}
         },
         "structured": {
           "ok": true,
-          "seconds": 0.72,
+          "seconds": 0.74,
           "error": ""
         },
         "tool_calling": {
           "ok": true,
-          "seconds": 0.4,
+          "seconds": 0.71,
           "error": ""
         },
         "usable": true
@@ -46,18 +46,18 @@
         "model": "llama-3.3-70b-versatile",
         "completion": {
           "ok": true,
-          "seconds": 0.16,
+          "seconds": 0.41,
           "error": "",
           "usage": {}
         },
         "structured": {
           "ok": true,
-          "seconds": 0.34,
+          "seconds": 0.81,
           "error": ""
         },
         "tool_calling": {
           "ok": true,
-          "seconds": 0.14,
+          "seconds": 1.05,
           "error": ""
         },
         "usable": true
@@ -66,18 +66,18 @@
         "model": "llama-3.1-8b-instant",
         "completion": {
           "ok": true,
-          "seconds": 0.12,
+          "seconds": 0.14,
           "error": "",
           "usage": {}
         },
         "structured": {
           "ok": true,
-          "seconds": 0.3,
+          "seconds": 0.36,
           "error": ""
         },
         "tool_calling": {
           "ok": true,
-          "seconds": 0.13,
+          "seconds": 0.18,
           "error": ""
         },
         "usable": true
@@ -85,13 +85,56 @@
     ]
   },
   "groq2": {
-    "skipped": "no api key"
+    "base_url": "https://api.groq.com/openai/v1",
+    "models": [
+      {
+        "model": "openai/gpt-oss-120b",
+        "completion": {
+          "ok": true,
+          "seconds": 4.14,
+          "error": "",
+          "usage": {}
+        },
+        "structured": {
+          "ok": true,
+          "seconds": 1.13,
+          "error": ""
+        },
+        "tool_calling": {
+          "ok": true,
+          "seconds": 0.45,
+          "error": ""
+        },
+        "usable": true
+      },
+      {
+        "model": "llama-3.3-70b-versatile",
+        "completion": {
+          "ok": true,
+          "seconds": 0.41,
+          "error": "",
+          "usage": {}
+        },
+        "structured": {
+          "ok": true,
+          "seconds": 0.9,
+          "error": ""
+        },
+        "tool_calling": {
+          "ok": true,
+          "seconds": 0.18,
+          "error": ""
+        },
+        "usable": true
+      }
+    ]
   },
   "groq3": {
     "skipped": "no api key"
   },
   "google": {
-    "skipped": "no api key"
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    "models": []
   },
   "openrouter": {
     "skipped": "no api key"

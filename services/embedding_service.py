@@ -99,6 +99,14 @@ def _google_batch(texts: list[str], task_type: str) -> list[list[float]]:
             # 429 and 5xx are worth waiting out; a 400 is a bad request and will not improve.
             if error.code not in {429, 500, 502, 503, 504}:
                 raise last from error
+            # A *daily* quota is not worth waiting out. Google returns `retryDelay: 58s` even
+            # when the exhausted quota is per-day, so honouring it blindly means five retries
+            # over four minutes for something that resets tomorrow. Measured in Phase 9: this
+            # turned an instant, honest degradation to keyword-only search into a four-minute
+            # stall, and hung the test suite for the same reason.
+            if _is_daily_quota(raw):
+                log.warning("Daily embedding quota exhausted; not retrying. %s", _quota_id(raw))
+                raise last from error
             if attempt == MAX_RETRIES - 1:
                 break
             wait = _retry_after(raw, attempt)
@@ -114,6 +122,28 @@ def _google_batch(texts: list[str], task_type: str) -> list[list[float]]:
             time.sleep(min(2 ** attempt, MAX_BACKOFF_SECONDS))
 
     raise last or EmbeddingError("Embedding failed for an unknown reason.")
+
+
+def _quota_id(error_body: str) -> str:
+    """The name of the exhausted quota, e.g. ``EmbedContentRequestsPerDayPerProjectPerModel``."""
+    try:
+        for detail in json.loads(error_body)["error"].get("details", []):
+            if "QuotaFailure" in detail.get("@type", ""):
+                violations = detail.get("violations", [])
+                if violations:
+                    return str(violations[0].get("quotaId", ""))
+    except Exception:  # noqa: BLE001 — a malformed body just means we cannot tell
+        pass
+    return ""
+
+
+def _is_daily_quota(error_body: str) -> bool:
+    """Whether the exhausted quota resets daily rather than per minute.
+
+    Conservative: if the quota cannot be identified, this returns False and the normal retry
+    path runs. Guessing "daily" wrongly would turn a recoverable blip into a hard failure.
+    """
+    return "PerDay" in _quota_id(error_body)
 
 
 def _retry_after(error_body: str, attempt: int) -> float:

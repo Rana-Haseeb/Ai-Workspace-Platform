@@ -11,13 +11,44 @@ connection for the life of the engine, which is what makes the in-memory databas
 """
 from __future__ import annotations
 
+import hashlib
+import math
+
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from core.config import settings
 from db.base import Base
 import db.models  # noqa: F401  — imported for the side effect of registering every table
+
+
+@pytest.fixture(autouse=True)
+def no_embedding_network(monkeypatch):
+    """Cut the embedding HTTP call for every test. Autouse, because opting in is not a defence.
+
+    The chat path embeds each query for hybrid retrieval, so any test that sends a message was
+    silently calling the live Google API. That passed for months on available quota and then
+    stopped: once the free tier returns 429 the retry honours Google's own ``retryDelay``, and
+    a suite documented as needing no network hung for minutes per test.
+
+    Only ``_google_batch`` — the function that actually opens the socket — is replaced.
+    ``is_configured``, ``embed_query``, ``embed_documents``, the batching and every error path
+    stay exactly as they are in production, so this removes the network without also removing
+    the behaviour under test. Tests that stub at a higher level still override this, because
+    monkeypatch applies theirs after.
+    """
+    def deterministic(texts: list[str], task_type: str) -> list[list[float]]:
+        vectors = []
+        for text in texts:
+            seed = hashlib.sha256(f"{task_type}:{text}".encode()).digest()
+            raw = [(seed[i % len(seed)] / 255.0) - 0.5 for i in range(settings.embedding_dim)]
+            norm = math.sqrt(sum(v * v for v in raw)) or 1.0
+            vectors.append([v / norm for v in raw])
+        return vectors
+
+    monkeypatch.setattr("services.embedding_service._google_batch", deterministic)
 
 
 @pytest.fixture
@@ -89,6 +120,12 @@ def client(engine, monkeypatch, tmp_path):
     # Uploads land in a temp directory that vanishes with the test, so a run never leaves files
     # behind in data/uploads.
     monkeypatch.setattr("core.config.settings.upload_dir", tmp_path / "uploads")
+
+    # The rate limiter is off by default here. A test that registers a user, creates a workspace
+    # and sends a few messages would otherwise spend its allowance on setup and fail for a reason
+    # it is not testing. ``test_security.py`` switches it back on and asserts it works.
+    monkeypatch.setattr("core.config.settings.rate_limit_per_minute", 0)
+    monkeypatch.setattr("core.config.settings.auth_rate_limit_per_minute", 0)
 
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db

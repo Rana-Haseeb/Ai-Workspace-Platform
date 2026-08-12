@@ -92,7 +92,11 @@ All of these run from the project root.
 python -m pytest
 ```
 
-289 tests, no network needed, about 90 seconds.
+389 tests, about 70 seconds, and **genuinely no network** — verified by running the whole suite
+with a deliberately invalid `GOOGLE_API_KEY`, which still passes. That claim used to be false:
+the chat path embeds every query for retrieval, so any test sending a message was quietly calling
+the live Google API. It passed on available quota and hung for minutes per test once the free
+tier started returning 429.
 
 ### The phase gates
 
@@ -110,8 +114,15 @@ python scripts/verify_phase2.py
 ```bash
 python scripts/verify_phase7.py
 ```
+```bash
+python scripts/verify_phase8.py
+```
 
-These three call the **real model providers**, so they need your API keys and take a minute:
+```bash
+python scripts/benchmark.py --offline
+```
+
+These five call the **real model providers**, so they need your API keys and take a minute:
 
 ```bash
 python scripts/verify_phase3.py
@@ -124,6 +135,9 @@ python scripts/verify_phase5.py
 ```
 ```bash
 python scripts/verify_phase6.py
+```
+```bash
+python scripts/verify_phase9.py
 ```
 
 ### Other checks
@@ -174,6 +188,8 @@ automatically.
 | "Something went wrong" on every action | Terminal 1 has the real error |
 | Chat fails with a 502 | The model provider refused — usually a rate limit. Terminal 1 says which |
 | Documents stay "Processing" | Embedding is rate limited. It still becomes searchable by keyword |
+| "Daily embedding quota exhausted" | Google's free tier is 1,000/day. Search drops to keyword-only until it resets |
+| A 429 with `Retry-After` | You hit the platform's own rate limit. Defaults: 10 logins/min, 120 API calls/min |
 | Changed Python code, nothing happened | The API needs `--reload`, or a manual restart |
 | Changed React code, nothing happened | Hard-refresh the browser (Ctrl+Shift+R) |
 | First message after starting is slow | Expected once. Later messages are ~0.2s |
@@ -188,11 +204,14 @@ services/     the actual logic       — chat, documents, memory, skills
 db/models.py  the 12 tables
 skills/       one file per skill     — add one here
 web/src/      the React app
-scripts/      verification, one per phase
-tests/        289 tests
+scripts/      verification, one per phase + benchmark.py
+tests/        389 tests
 ```
 
 Two rules the code follows, with tests behind them:
 
 - nothing in `services/` imports FastAPI, so every service is testable without a server
 - nothing in `web/src/` calls `fetch` except `lib/api.ts`
+
+Both are asserted in [tests/test_architecture.py](tests/test_architecture.py), and each was
+proved to fail by injecting the violation before being trusted.

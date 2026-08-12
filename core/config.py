@@ -216,7 +216,13 @@ class Settings(BaseModel):
         default_factory=lambda: _csv(
             "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"))
     max_upload_mb: int = Field(default_factory=lambda: _int("MAX_UPLOAD_MB", 20))
-    rate_limit_per_minute: int = Field(default_factory=lambda: _int("RATE_LIMIT_PER_MINUTE", 30))
+    # Enforced by core.rate_limit. Until Phase 9 this was read by nothing at all — it described
+    # a protection the application did not have. 0 disables the limiter.
+    rate_limit_per_minute: int = Field(default_factory=lambda: _int("RATE_LIMIT_PER_MINUTE", 120))
+    # Login and registration separately, because password guessing needs a far tighter budget
+    # than ordinary use, and a limit loose enough for a chat client is no defence at all.
+    auth_rate_limit_per_minute: int = Field(
+        default_factory=lambda: _int("AUTH_RATE_LIMIT_PER_MINUTE", 10))
     api_host: str = Field(default_factory=lambda: os.getenv("API_HOST", "127.0.0.1"))
     api_port: int = Field(default_factory=lambda: _int("API_PORT", 8000))
 

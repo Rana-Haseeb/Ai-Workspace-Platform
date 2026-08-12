@@ -75,6 +75,21 @@ def _client(cfg, key: str):
     )
 
 
+def _redact(text: str) -> str:
+    """Strip every configured key out of an error before it is printed or written to disk.
+
+    probe_results.json is committed, so a provider that echoes the key back in its error message
+    would put it in git history. The previous version masked only GROQ_API_KEY by name, which
+    meant adding GROQ_API_KEY_2 silently created a hole: the second key is only ever redacted
+    because this reads the key names from PROVIDERS rather than listing them here.
+    """
+    for cfg in PROVIDERS.values():
+        key = os.getenv(cfg.api_key_env)
+        if key:
+            text = text.replace(key, f"***{cfg.api_key_env}***")
+    return text
+
+
 def _timed(fn) -> tuple[bool, float, str, dict]:
     """Run fn, return (ok, seconds, detail, usage)."""
     t0 = time.perf_counter()
@@ -88,8 +103,7 @@ def _timed(fn) -> tuple[bool, float, str, dict]:
         return True, dt, "", usage
     except Exception as e:  # noqa: BLE001
         dt = time.perf_counter() - t0
-        msg = str(e).replace(os.environ.get("GROQ_API_KEY", "\0"), "***")
-        return False, dt, msg[:160], {}
+        return False, dt, _redact(str(e))[:160], {}
 
 
 def probe_model(make, model: str) -> dict:
@@ -144,7 +158,10 @@ def main() -> int:
         print(f"\n=== {name} ({cfg.base_url}) ===")
         make = _client(cfg, key)
         rows = []
-        for model in cfg.probe_models:
+        # probes() falls back to the provider's real chain when no explicit probe list is set.
+        # Reading probe_models directly meant every provider but groq printed an empty section —
+        # a configured-but-broken key looked exactly like a working one.
+        for model in cfg.probes():
             r = probe_model(make, model)
             rows.append(r)
             mark = "OK " if r["usable"] else "XX "

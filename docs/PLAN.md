@@ -33,12 +33,12 @@ isolation, workspace CRUD with the eight assistant settings, persistent chat wit
 streaming, a knowledge base that answers with page-level citations, and long-term memory that
 survives a restart, a prompt library plus nine reusable skills, and a usage dashboard with five
 advanced features, plus 44 evaluation scenarios and six experiments with real measured results.
-Next: Phase 9 — security review, performance report, and the test suite to its final shape.
+Next: Phase 10 — architecture doc, ERD, API docs, research report, builder journal.
 
 Gates, all currently passing:
 
 ```bash
-python -m pytest                    # 317 tests, no network
+python -m pytest                    # 389 tests, no network
 python scripts/verify_phase0.py     # schema, indexes, secrets hygiene, themes
 python scripts/verify_phase1.py     # hashing, tokens, 403 isolation
 python scripts/verify_phase2.py     # workspace CRUD, 8 settings fields, persistence

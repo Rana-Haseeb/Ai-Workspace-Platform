@@ -1,11 +1,13 @@
 {
-  "generated_at": "2026-08-12T10:19:51.715583+00:00",
+  "generated_at": "2026-08-12T14:18:00.633461+00:00",
   "provider_chain": [
     "groq",
+    "groq2",
     "google"
   ],
   "temperature": 0.0,
-  "wall_clock_seconds": 1252.7,
+  "wall_clock_seconds": 68.6,
+  "partial_run": true,
   "experiments": {
     "Memory enabled vs disabled": {
       "question": "Does long-term memory measurably change answers?",
@@ -105,35 +107,35 @@
       "question": "Does accuracy or latency degrade as a conversation grows?",
       "measurements": [
         {
-          "messages_in_history": 1,
-          "correct": false,
-          "latency_ms": 24957
+          "messages_in_history": 2,
+          "correct": true,
+          "latency_ms": 26891
         },
         {
-          "messages_in_history": 5,
-          "correct": false,
-          "latency_ms": 2985
+          "messages_in_history": 10,
+          "correct": true,
+          "latency_ms": 2132
         },
         {
-          "messages_in_history": 9,
-          "correct": false,
-          "latency_ms": 2957
+          "messages_in_history": 18,
+          "correct": true,
+          "latency_ms": 2193
         },
         {
-          "messages_in_history": 13,
-          "correct": false,
-          "latency_ms": 3219
+          "messages_in_history": 26,
+          "correct": true,
+          "latency_ms": 2640
         },
         {
-          "messages_in_history": 17,
-          "correct": false,
-          "latency_ms": 3004
+          "messages_in_history": 34,
+          "correct": true,
+          "latency_ms": 3313
         }
       ],
       "history_limit": 20,
-      "baseline_correct": false,
-      "finding": "INCONCLUSIVE \u2014 the probe was already wrong at turn one, so this measured retrieval rather than conversation length. A length experiment is only meaningful when the baseline is correct.",
-      "blocked_by": "Provider rate limit. Every probe returned HTTP 502 after the evaluation and the other five experiments exhausted the Groq free tier, so the answers were empty and scored wrong. Re-run with: python experiments/run_experiments.py --only 5"
+      "baseline_correct": true,
+      "finding": "The same question stayed correct in 5 of 5 probes as the transcript grew from 2 to 34 messages. History is trimmed to the last 20, so cost stops rising once that window fills \u2014 which is the point of trimming by turn count rather than letting the prompt grow without bound.",
+      "run_at": "2026-08-12T14:18:00.633461+00:00"
     },
     "Chunk size comparison": {
       "question": "What chunk size retrieves best on this corpus?",
@@ -169,6 +171,5 @@
       "best": "300 chars",
       "finding": "300 chars scored highest. Small chunks retrieve precisely but can cut a fact away from the sentence that qualifies it; large chunks keep context but dilute the embedding, so a chunk about many things matches nothing strongly."
     }
-  },
-  "note": "Experiments 1-4 and 6 completed with real results. Experiment 5 is inconclusive: the first attempt used a probe fact that retrieval never surfaced, and the corrected re-run was blocked by a provider rate limit. Both attempts are recorded rather than a number being invented."
+  }
 }

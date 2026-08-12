@@ -1,0 +1,134 @@
+{
+  "generated_at": "2026-08-12T15:49:35.899589+00:00",
+  "database": "sqlite-memory",
+  "provider_chain": [
+    "groq",
+    "groq2",
+    "google"
+  ],
+  "chunk_size": 800,
+  "embedding_dim": 768,
+  "note": "Warm-up runs are executed and discarded; see the module docstring.",
+  "measurements": {
+    "health probe": {
+      "unit": "ms",
+      "runs": 20,
+      "min": 4.56,
+      "p50": 4.87,
+      "p95": 5.92,
+      "max": 5.92,
+      "mean": 4.92
+    },
+    "authenticated list (workspaces)": {
+      "unit": "ms",
+      "runs": 20,
+      "min": 8.72,
+      "p50": 9.23,
+      "p95": 13.26,
+      "max": 13.26,
+      "mean": 9.36
+    },
+    "workspace detail + settings": {
+      "unit": "ms",
+      "runs": 20,
+      "min": 11.16,
+      "p50": 12.21,
+      "p95": 14.51,
+      "max": 14.51,
+      "mean": 12.23
+    },
+    "argon2id hash": {
+      "unit": "ms",
+      "runs": 10,
+      "min": 71.34,
+      "p50": 75.25,
+      "p95": 87.97,
+      "max": 87.97,
+      "mean": 76.66
+    },
+    "argon2id verify": {
+      "unit": "ms",
+      "runs": 10,
+      "min": 64.2,
+      "p50": 69.2,
+      "p95": 79.17,
+      "max": 79.17,
+      "mean": 70.46
+    },
+    "issue a JWT": {
+      "unit": "ms",
+      "runs": 50,
+      "min": 0.03,
+      "p50": 0.03,
+      "p95": 0.04,
+      "max": 0.05,
+      "mean": 0.03
+    },
+    "read a 200-message transcript": {
+      "unit": "ms",
+      "runs": 20,
+      "min": 3.01,
+      "p50": 3.19,
+      "p95": 47.58,
+      "max": 47.58,
+      "mean": 5.57
+    },
+    "dashboard aggregate (HTTP)": {
+      "unit": "ms",
+      "runs": 20,
+      "min": 17.25,
+      "p50": 18.15,
+      "p95": 19.25,
+      "max": 19.25,
+      "mean": 18.3
+    },
+    "extract text from 31 KB": {
+      "unit": "ms",
+      "runs": 10,
+      "min": 2.25,
+      "p50": 2.39,
+      "p95": 2.64,
+      "max": 2.64,
+      "mean": 2.41
+    },
+    "chunk 31 KB at 800 chars": {
+      "unit": "ms",
+      "runs": 10,
+      "min": 0.11,
+      "p50": 0.11,
+      "p95": 0.12,
+      "max": 0.12,
+      "mean": 0.11
+    },
+    "BM25 retrieval over 50 chunks": {
+      "unit": "ms",
+      "runs": 20,
+      "min": 4.93,
+      "p50": 5.19,
+      "p95": 8.15,
+      "max": 8.15,
+      "mean": 5.39
+    },
+    "rank 500 memories by importance x recency": {
+      "unit": "ms",
+      "runs": 20,
+      "min": 1.19,
+      "p50": 1.26,
+      "p95": 1.35,
+      "max": 1.35,
+      "mean": 1.27
+    },
+    "embed one query (google)": {
+      "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on t"
+    },
+    "model round trip (openai/gpt-oss-120b via groq)": {
+      "unit": "ms",
+      "runs": 3,
+      "min": 486.43,
+      "p50": 495.04,
+      "p95": 685.25,
+      "max": 685.25,
+      "mean": 555.57
+    }
+  }
+}

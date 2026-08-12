@@ -324,12 +324,24 @@ def main() -> int:
             print(f"     FAILED: {safe(error)[:120]}\n")
 
     elapsed = time.perf_counter() - started
+
+    # Merge rather than overwrite. `--only 5` re-runs one experiment; writing the whole payload
+    # would silently delete the other five, which is the expensive way to learn that a partial
+    # run is not a full run. Each experiment carries the timestamp of the run that produced it,
+    # so a merged file never implies results were gathered together when they were not.
+    stamp = datetime.now(timezone.utc).isoformat()
+    for value in results.values():
+        value["run_at"] = stamp
+
+    previous = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
+    merged = {**previous.get("experiments", {}), **results}
     payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": stamp,
         "provider_chain": settings.provider_chain(),
         "temperature": 0.0,
         "wall_clock_seconds": round(elapsed, 1),
-        "experiments": results,
+        "partial_run": bool(args.only),
+        "experiments": merged,
     }
     OUT.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"  Completed in {elapsed:.0f}s. Written to {OUT.relative_to(ROOT)}\n")

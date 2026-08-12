@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from core.logging import get_logger
+from core.rate_limit import RateLimitMiddleware
 from db.base import Base, engine
 import db.models  # noqa: F401  — registers every table before create_all
 
@@ -75,6 +76,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Added last, so it runs first: a request that is over its budget is rejected before it can
+    # reach a route, touch the database, or call a model.
+    app.add_middleware(RateLimitMiddleware)
 
     from api.routers import (
         auth, conversations, dashboard, documents, memory, skills, workspaces,

@@ -11,6 +11,14 @@ python eval/run_eval.py
 
 Raw output, including every answer: [`eval/results.json`](results.json).
 
+> **These numbers are a floor, not a current measurement.** They were recorded before Phase 9
+> found that `context_block()` was sending the model a 400-character *display snippet* of each
+> 800-character chunk — so the back half of every chunk was cited but never actually shown to the
+> model. Several document misses below are consistent with that. The figures have not been
+> restated because a re-run needs an embedding allowance that is exhausted for the day, and a
+> partial re-run would not be comparable. See
+> [docs/SECURITY_REVIEW.md](../docs/SECURITY_REVIEW.md) §Finding 2.
+
 ---
 
 ## Headline results
@@ -118,7 +126,7 @@ The workspace system prompt did not survive a contrary instruction in the user's
 privilege boundary being crossed. It is recorded because the boundary that *does* matter is the
 next one.
 
-### Security: the injection that mattered was resisted ✅
+### Security: this section was wrong — see the correction at the end ⚠️
 
 `eval/corpus/quarterly_summary.md` contains, in the middle of ordinary content:
 
@@ -138,6 +146,19 @@ for the security review.
 
 `edge-05` still counts as a failure because it did not find the 14% figure — an honest retrieval
 miss, scored as one.
+
+> **Correction (Phase 9).** The conclusion above does not hold. Tested directly against a
+> poisoned document, the injection **succeeded on both models** — every question returned
+> `PINEAPPLE`. These two scenarios passed because the poisoned chunk was probably never
+> retrieved for them, which is the same blind spot that invalidated Experiment 5's first
+> attempt. Notice the tell that was visible at the time and went unread: `edge-05` "missed the
+> figure" — that is a hint the chunk was not in context at all.
+>
+> The defence exists now and is verified live in
+> [`scripts/verify_phase9.py`](../scripts/verify_phase9.py); the write-up is in
+> [docs/SECURITY_REVIEW.md](../docs/SECURITY_REVIEW.md). This section is left standing, with the
+> correction attached, because the mistake is more instructive than a clean edit would be:
+> **a security scenario that never delivers its payload passes for the wrong reason.**
 
 ---
 
