@@ -88,6 +88,13 @@ const PAIRS = [
   ['brand', 'background', 3.0, 'brand accent against the page'],
   ['destructive', 'background', 4.5, 'error text on the page'],
   ['destructive', 'card', 4.5, 'error text on a card'],
+  // Chart series carry no text, so 3.0 applies (WCAG 1.4.11, non-text contrast). They are
+  // checked against the card because that is what a chart is drawn on.
+  ['chart-1', 'card', 3.0, 'chart series 1 on a card'],
+  ['chart-2', 'card', 3.0, 'chart series 2 on a card'],
+  ['chart-3', 'card', 3.0, 'chart series 3 on a card'],
+  ['chart-4', 'card', 3.0, 'chart series 4 on a card'],
+  ['chart-5', 'card', 3.0, 'chart series 5 on a card'],
 ]
 
 let failures = 0

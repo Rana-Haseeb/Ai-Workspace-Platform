@@ -80,10 +80,12 @@ export function AppShell() {
           </div>
         </header>
 
-        {/* No scrolling here. Chat owns its own scroll container so the composer can stay pinned
-            to the bottom while the transcript scrolls behind it; a scroll on this element would
-            nest two scroll regions and make the wheel behave differently over each. */}
-        <main className="flex min-h-0 flex-1 flex-col">
+        {/* Scrolls by default, because most routes are ordinary documents taller than the
+            viewport. Chat is the exception — it pins its composer to the bottom and scrolls the
+            transcript itself — so its root is `h-full overflow-hidden`, which fills this element
+            exactly and therefore never triggers this scrollbar. That keeps exactly one scroll
+            region active on any given screen. */}
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {current.isLoading ? <ShellSkeleton /> : <Outlet context={current.data} />}
         </main>
       </div>

@@ -24,7 +24,7 @@ const SECTIONS = [
   { to: 'memory', label: 'Memory', icon: BrainCircuit, ready: true, phase: '' },
   { to: 'prompts', label: 'Prompts', icon: Library, ready: true, phase: '' },
   { to: 'skills', label: 'Skills', icon: Sparkles, ready: true, phase: '' },
-  { to: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, ready: false, phase: 'P7' },
+  { to: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, ready: true, phase: '' },
   { to: 'settings', label: 'Settings', icon: Settings, ready: true, phase: '' },
 ] as const
 

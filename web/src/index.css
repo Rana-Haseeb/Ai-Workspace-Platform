@@ -76,11 +76,15 @@
     --border: oklch(0.921 0.016 293.7);
     --input: oklch(0.921 0.016 293.7);
     --ring: oklch(0.457 0.215 277.0);
+    /* Chart series carry no text, so the bar itself only needs 3:1 against the card it sits on
+       (WCAG 1.4.11). Series 4 and 5 are darker here than in dark mode: the bright emerald and
+       amber that read well on #192134 measure 2.54 and 2.15 against white, which is a bar you
+       can barely see. Verified by scripts/check_contrast.js. */
     --chart-1: oklch(0.457 0.215 277.0);
     --chart-2: oklch(0.541 0.247 293.0);
     --chart-3: oklch(0.609 0.111 221.7);
-    --chart-4: oklch(0.696 0.149 162.5);
-    --chart-5: oklch(0.769 0.165 70.1);
+    --chart-4: oklch(0.596 0.127 163.2);   /* #059669, 3.77:1 on white */
+    --chart-5: oklch(0.666 0.157 58.3);    /* #D97706, 3.19:1 on white */
     --radius: 0.625rem;
     --sidebar: oklch(1.000 0.000 90);
     --sidebar-foreground: oklch(0.208 0.040 265.8);
@@ -152,6 +156,45 @@
   /* Dashboard figures and any column of numbers. Proportional digits shift width as values
      change, which makes a live token counter jitter. */
   .tabular { font-variant-numeric: tabular-nums; }
+}
+
+/* Scrollbars, made visible on purpose.
+   The browser default is a low-contrast grey that all but disappears against #0F172A, so a
+   scrollable panel reads as a page that simply ends. These are deliberately subtle but always
+   discernible, and they follow the theme. `scrollbar-color` covers Firefox and current Chrome;
+   the ::-webkit rules cover Safari and older Chrome. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 25%, transparent) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--foreground) 22%, transparent);
+    border-radius: 999px;
+    /* A transparent border with background-clip keeps the thumb visually narrower than its hit
+       area, so it is easy to grab without looking heavy. */
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--foreground) 40%, transparent);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 /* Users who have asked their OS to reduce motion get a static interface, not a slower one. */

@@ -85,8 +85,8 @@ export default function WorkspaceHome() {
 
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="text-base">Coming next</CardTitle>
-          <CardDescription>Built in order, each verified before the next starts.</CardDescription>
+          <CardTitle className="text-base">What this workspace can do</CardTitle>
+          <CardDescription>Each was verified before the next was started.</CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">

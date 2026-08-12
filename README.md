@@ -9,7 +9,7 @@ something you said three sessions ago.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-CA4245?style=for-the-badge)](https://sqlalchemy.org)
-[![Tests](https://img.shields.io/badge/tests-268_passing-success?style=for-the-badge)](tests/)
+[![Tests](https://img.shields.io/badge/tests-289_passing-success?style=for-the-badge)](tests/)
 [![WCAG](https://img.shields.io/badge/WCAG-AA_verified-0F9D58?style=for-the-badge)](scripts/check_contrast.js)
 
 <samp>Visibility Bots Innovation Lab · AI Summer Fellowship 2026 · Track 2: NLP & AI Agents · **Week 5**</samp>
@@ -43,6 +43,7 @@ something you said three sessions ago.**
 - [How memory works](#how-memory-works)
 - [How skills work](#how-skills-work)
 - [How prompt versioning works](#how-prompt-versioning-works)
+- [The five advanced features](#the-five-advanced-features)
 - [Design system](#design-system)
 - [Measured performance](#measured-performance)
 - [Deployment](#deployment)
@@ -88,7 +89,7 @@ done until that output passes.
 | 4 | Knowledge base and document intelligence with citations | ✅ |
 | 5 | Long-term memory | ✅ |
 | 6 | Prompt library and reusable skills | ✅ |
-| 7 | Dashboard and advanced features | ⬜ |
+| 7 | Dashboard and advanced features | ✅ |
 | 8 | 40 evaluation scenarios, 6 experiments | ⬜ |
 | 9 | Full test suite, security review, performance report | ⬜ |
 | 10 | Architecture docs, ERD, research report, builder journal | ⬜ |
@@ -100,7 +101,7 @@ The full plan, including the specification and gate for every phase, is in
 **Currently passing:**
 
 ```
-268 tests passed
+289 tests passed
 PHASE 0 PASSED - 12 tables, 8 settings fields, 7 indexed keys, 2 themes.
 PHASE 1 PASSED - argon2 hashing, signed sessions, and 403 isolation verified.
 PHASE 2 PASSED - workspace CRUD, 8 assistant fields, validation, persistence.
@@ -108,6 +109,7 @@ PHASE 3 PASSED - live replies, titling, history, streaming, search, persistence.
 PHASE 4 PASSED - real PDF ingested, embedded, retrieved, and cited by page.
 PHASE 5 PASSED - extracted live, ranked, injected across a restart, user-editable.
 PHASE 6 PASSED - 9 skills ran live, prompts version cleanly.
+PHASE 7 PASSED - dashboard figures match SQL, export works, 5 advanced features.
 All pairs meet WCAG AA.
 ```
 
@@ -145,11 +147,14 @@ real model decides what is worth remembering. The test suite itself stays offlin
 | **Structured skill output** | A SWOT returns four lists, not four paragraphs; a plan returns steps with estimates and dependencies |
 | **Slash palette** | Type `/` in the chat box to run a skill inline; the result is stored in the transcript like any other message |
 | **Prompt library** | Saved prompts by category, and editing one creates a new **version** rather than overwriting it |
+| **Usage dashboard** | Conversations, documents, memory, prompts, tokens, cost, latency and a 14-day chart — every figure a live aggregate, never a stored counter |
+| **Token attribution** | Shows *where* tokens went: chat, embedding, memory extraction and skills each broken out |
+| **Conversation export** | Markdown download, or print to PDF. Citations and applied memories are included, so an exported answer keeps its evidence |
 | **Dark and light themes** | Dark by default, applied before first paint. Every colour pair verified against WCAG AA in both |
 
 ### Coming in later phases
 
-Usage dashboard · conversation export · tagging.
+Evaluation dataset, experiments, security review, performance report, deployment.
 
 ---
 
@@ -441,6 +446,13 @@ memories with a null `workspace_id` appear in every workspace's list.
 | `POST` | `/prompts/{id}/use` | Record a use and return the text |
 | `DELETE` | `/prompts/{id}` | Delete the prompt and all its versions |
 
+### Dashboard and export
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/dashboard` | Totals, usage, daily chart, activity — all live aggregates |
+| `GET` | `/conversations/{id}/export` | Markdown. `?download=true` sets a filename |
+
 ### Meta
 
 | Method | Path | Purpose |
@@ -610,6 +622,28 @@ and history is not recoverable once discarded.
 Two refinements the tests pin down: an edit that changes nothing returns the existing row rather
 than minting an identical version, and `use_count` follows the prompt across versions — a prompt
 used forty times is still that prompt after a wording change.
+
+---
+
+## The five advanced features
+
+The challenge asks for four.
+
+| Feature | Where |
+|---|---|
+| **Dark and light theme** | Toggle top-right. Applied before first paint, both verified against WCAG AA |
+| **Conversation search** | Sidebar. Matches titles *and* message bodies, so a half-remembered phrase finds the thread |
+| **Pinned messages, pinned conversations, tags** | Pin any reply; pinned conversations sort first; tags de-duplicated and capped |
+| **Multi-model switching** | Per workspace, in settings. Failover across providers is automatic |
+| **Conversation export** | Markdown download or print-to-PDF, with citations and memories included |
+
+### Why PDF is printed by the browser
+
+A server-side PDF means a rendering engine — WeasyPrint, wkhtmltopdf, headless Chrome — as a
+dependency. All are heavy, awkward to install, and a new failure mode in production. The browser
+already has an excellent PDF renderer, so the client prints a clean export view and the platform
+ships one fewer dependency. Markdown is the better artefact anyway: it opens anywhere, diffs, and
+pastes into a document without losing structure.
 
 ---
 
@@ -871,7 +905,12 @@ is a surprise.
 - **Skills have no streaming.** A skill run returns when it is finished, so a long report sits
   behind a spinner where chat would have shown tokens arriving.
 - **Skill output is not editable in place.** It can be copied, or re-run with different input.
-- **Phases 7–11 are not built.** The sidebar shows those sections disabled with the phase they
+- **The dashboard runs a query per metric.** No denormalised counters, so no figure can drift
+  out of step with the data — but it is several COUNTs per page load. Fine at this scale;
+  measured in the Phase 9 performance report rather than assumed.
+- **Estimated cost is $0.00 on free tiers**, which is the honest figure rather than a
+  placeholder. Tokens are the number that actually varies, so the dashboard leads with those.
+- **Phases 8–11 are not built.** The sidebar shows those sections disabled with the phase they
   arrive in, rather than hiding them.
 
 ---

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, Sparkles } from 'lucide-react'
 
 import { Composer } from '@/components/chat/Composer'
+import { ExportMenu } from '@/components/chat/ExportMenu'
 import { MessageBubble } from '@/components/chat/MessageBubble'
 import {
   conversations,
@@ -136,7 +137,21 @@ export default function Chat() {
   const empty = !isLoading && messages.length === 0 && !streaming
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // `h-full overflow-hidden` fills the shell's <main> exactly, so main's own scrollbar never
+    // engages and this component keeps sole ownership of scrolling — the transcript moves while
+    // the composer stays pinned.
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      {messages.length > 0 && (
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
+          <p className="truncate text-sm font-medium">{data?.title}</p>
+          <ExportMenu
+            workspaceId={workspace.id}
+            conversationId={id}
+            title={data?.title ?? 'conversation'}
+          />
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
           {empty && (

@@ -76,7 +76,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from api.routers import auth, conversations, documents, memory, skills, workspaces
+    from api.routers import (
+        auth, conversations, dashboard, documents, memory, skills, workspaces,
+    )
 
     app.include_router(auth.router)
     app.include_router(workspaces.router)
@@ -84,6 +86,7 @@ def create_app() -> FastAPI:
     app.include_router(documents.router)
     app.include_router(memory.router)
     app.include_router(skills.router)
+    app.include_router(dashboard.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:

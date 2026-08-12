@@ -226,6 +226,40 @@ export interface PromptTemplate {
   created_at: string
 }
 
+export interface DashboardData {
+  totals: {
+    conversations: number
+    messages: number
+    documents: number
+    chunks: number
+    memories: number
+    prompts: number
+  }
+  usage: {
+    calls: number
+    failed_calls: number
+    tokens_in: number
+    tokens_out: number
+    tokens_total: number
+    estimated_cost_usd: number
+    average_latency_ms: number
+    p95_latency_ms: number
+  }
+  by_event: { event: string; calls: number; tokens: number }[]
+  daily: { date: string; tokens: number }[]
+  activity: {
+    event: string
+    detail: string | null
+    model: string | null
+    tokens: number
+    latency_ms: number
+    status: string
+    created_at: string
+  }[]
+  top_memories: { content: string; kind: string; use_count: number }[]
+  provider_chain: string[]
+}
+
 export interface Message {
   id: number
   role: 'user' | 'assistant' | 'system'
@@ -347,6 +381,27 @@ export const documents = {
       method: 'POST',
       body: JSON.stringify({ query, top_k: topK }),
     }),
+}
+
+// -------------------------------------------------------------------- dashboard
+export const dashboard = {
+  get: (workspaceId: number) =>
+    request<DashboardData>(`/api/workspaces/${workspaceId}/dashboard`),
+
+  /**
+   * The conversation as Markdown.
+   *
+   * Not `request()` — the response is text/markdown, not JSON, so it needs its own path rather
+   * than a special case inside the shared helper.
+   */
+  async exportConversation(workspaceId: number, conversationId: number): Promise<string> {
+    const response = await fetch(
+      `/api/workspaces/${workspaceId}/conversations/${conversationId}/export`,
+      { credentials: 'include' },
+    )
+    if (!response.ok) throw new ApiError(response.status, await errorMessage(response))
+    return response.text()
+  },
 }
 
 // ----------------------------------------------------------------------- skills

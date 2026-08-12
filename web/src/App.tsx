@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
 import { useAuth } from '@/hooks/useAuth'
 import Chat from '@/routes/Chat'
+import Dashboard from '@/routes/Dashboard'
 import Documents from '@/routes/Documents'
 import Login from '@/routes/Login'
 import Memory from '@/routes/Memory'
@@ -84,6 +85,7 @@ export default function App() {
         <Route path="memory" element={<Memory />} />
         <Route path="prompts" element={<Prompts />} />
         <Route path="skills" element={<Skills />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="settings" element={<WorkspaceSettings />} />
       </Route>
 
