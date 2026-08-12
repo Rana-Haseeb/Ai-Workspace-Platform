@@ -1,0 +1,174 @@
+{
+  "generated_at": "2026-08-12T10:19:51.715583+00:00",
+  "provider_chain": [
+    "groq",
+    "google"
+  ],
+  "temperature": 0.0,
+  "wall_clock_seconds": 1252.7,
+  "experiments": {
+    "Memory enabled vs disabled": {
+      "question": "Does long-term memory measurably change answers?",
+      "arms": {
+        "memory on": {
+          "scenarios": 6,
+          "accuracy": 1.0,
+          "mean_score": 1.0,
+          "mean_latency_ms": 12158
+        },
+        "memory off": {
+          "scenarios": 6,
+          "accuracy": 0.0,
+          "mean_score": 0.083,
+          "mean_latency_ms": 7989
+        }
+      },
+      "delta_accuracy": 1.0,
+      "finding": "Memory raises accuracy on memory-dependent questions by 100%. Without it the platform cannot answer them at all, which is the expected result and confirms the memory scenarios genuinely depend on recall rather than on the model guessing."
+    },
+    "Short prompt vs detailed prompt": {
+      "question": "Does a detailed system prompt beat a short one on document questions?",
+      "arms": {
+        "short": {
+          "scenarios": 10,
+          "accuracy": 0.6,
+          "mean_score": 0.817,
+          "mean_latency_ms": 8537,
+          "system_prompt_chars": 28
+        },
+        "detailed": {
+          "scenarios": 10,
+          "accuracy": 0.6,
+          "mean_score": 0.842,
+          "mean_latency_ms": 7079,
+          "system_prompt_chars": 309
+        }
+      },
+      "delta_accuracy": 0.0,
+      "finding": "The detailed prompt changes accuracy by +0% for 281 extra characters (~70 tokens) on every single turn. Worth it only if the delta is positive and stable."
+    },
+    "Different models": {
+      "question": "Which model gives the best accuracy, and at what latency?",
+      "arms": {
+        "llama-3.3-70b-versatile": {
+          "scenarios": 13,
+          "accuracy": 0.692,
+          "mean_score": 0.859,
+          "mean_latency_ms": 9094
+        },
+        "openai/gpt-oss-120b": {
+          "scenarios": 13,
+          "accuracy": 0.769,
+          "mean_score": 0.897,
+          "mean_latency_ms": 8541
+        },
+        "openai/gpt-oss-20b": {
+          "scenarios": 13,
+          "accuracy": 0.615,
+          "mean_score": 0.782,
+          "mean_latency_ms": 8278
+        }
+      },
+      "most_accurate": "openai/gpt-oss-120b",
+      "fastest": "openai/gpt-oss-20b",
+      "finding": "openai/gpt-oss-120b scored highest; openai/gpt-oss-20b was fastest. Where they differ the deployment default should follow accuracy, because a wrong answer delivered quickly is still wrong \u2014 and the per-workspace model setting lets a user trade back."
+    },
+    "Small vs large context (top_k)": {
+      "question": "Does feeding more retrieved excerpts improve answers?",
+      "arms": {
+        "top_k=2": {
+          "scenarios": 10,
+          "accuracy": 0.6,
+          "mean_score": 0.842,
+          "mean_latency_ms": 10375,
+          "top_k": 2
+        },
+        "top_k=6": {
+          "scenarios": 10,
+          "accuracy": 0.6,
+          "mean_score": 0.767,
+          "mean_latency_ms": 8388,
+          "top_k": 6
+        },
+        "top_k=12": {
+          "scenarios": 10,
+          "accuracy": 0.3,
+          "mean_score": 0.417,
+          "mean_latency_ms": 5534,
+          "top_k": 12
+        }
+      },
+      "best": "top_k=2",
+      "finding": "top_k=2 scored highest. More context is not monotonically better: extra excerpts add tokens and can bury the relevant passage among near-misses, which is the failure mode behind several of the evaluation's document misses."
+    },
+    "Conversation length": {
+      "question": "Does accuracy or latency degrade as a conversation grows?",
+      "measurements": [
+        {
+          "messages_in_history": 1,
+          "correct": false,
+          "latency_ms": 24957
+        },
+        {
+          "messages_in_history": 5,
+          "correct": false,
+          "latency_ms": 2985
+        },
+        {
+          "messages_in_history": 9,
+          "correct": false,
+          "latency_ms": 2957
+        },
+        {
+          "messages_in_history": 13,
+          "correct": false,
+          "latency_ms": 3219
+        },
+        {
+          "messages_in_history": 17,
+          "correct": false,
+          "latency_ms": 3004
+        }
+      ],
+      "history_limit": 20,
+      "baseline_correct": false,
+      "finding": "INCONCLUSIVE \u2014 the probe was already wrong at turn one, so this measured retrieval rather than conversation length. A length experiment is only meaningful when the baseline is correct.",
+      "blocked_by": "Provider rate limit. Every probe returned HTTP 502 after the evaluation and the other five experiments exhausted the Groq free tier, so the answers were empty and scored wrong. Re-run with: python experiments/run_experiments.py --only 5"
+    },
+    "Chunk size comparison": {
+      "question": "What chunk size retrieves best on this corpus?",
+      "arms": {
+        "300 chars": {
+          "scenarios": 10,
+          "accuracy": 0.6,
+          "mean_score": 0.717,
+          "mean_latency_ms": 6899,
+          "chunk_size": 300,
+          "overlap": 50,
+          "chunks_created": 22
+        },
+        "800 chars": {
+          "scenarios": 10,
+          "accuracy": 0.5,
+          "mean_score": 0.617,
+          "mean_latency_ms": 5887,
+          "chunk_size": 800,
+          "overlap": 120,
+          "chunks_created": 8
+        },
+        "1600 chars": {
+          "scenarios": 10,
+          "accuracy": 0.3,
+          "mean_score": 0.567,
+          "mean_latency_ms": 6023,
+          "chunk_size": 1600,
+          "overlap": 200,
+          "chunks_created": 4
+        }
+      },
+      "best": "300 chars",
+      "finding": "300 chars scored highest. Small chunks retrieve precisely but can cut a fact away from the sentence that qualifies it; large chunks keep context but dilute the embedding, so a chunk about many things matches nothing strongly."
+    }
+  },
+  "note": "Experiments 1-4 and 6 completed with real results. Experiment 5 is inconclusive: the first attempt used a probe fact that retrieval never surfaced, and the corrected re-run was blocked by a provider rate limit. Both attempts are recorded rather than a number being invented."
+}

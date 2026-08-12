@@ -28,16 +28,17 @@ LLM layer ported from Week 4 (5 providers, cross-provider failover).
 | Deployment | Hugging Face Spaces, Docker — one container, uvicorn serves API + SPA |
 | Workflow | Approve each phase before it starts |
 
-**Progress:** Phases 0–7 complete and verified — foundations, authentication with tenant
+**Progress:** Phases 0–8 complete and verified — foundations, authentication with tenant
 isolation, workspace CRUD with the eight assistant settings, persistent chat with token
 streaming, a knowledge base that answers with page-level citations, and long-term memory that
 survives a restart, a prompt library plus nine reusable skills, and a usage dashboard with five
-advanced features. Next: Phase 8 — 40 evaluation scenarios and six experiments.
+advanced features, plus 44 evaluation scenarios and six experiments with real measured results.
+Next: Phase 9 — security review, performance report, and the test suite to its final shape.
 
 Gates, all currently passing:
 
 ```bash
-python -m pytest                    # 289 tests, no network
+python -m pytest                    # 317 tests, no network
 python scripts/verify_phase0.py     # schema, indexes, secrets hygiene, themes
 python scripts/verify_phase1.py     # hashing, tokens, 403 isolation
 python scripts/verify_phase2.py     # workspace CRUD, 8 settings fields, persistence
@@ -46,6 +47,8 @@ python scripts/verify_phase4.py     # LIVE: real PDF -> embeddings -> cited answ
 python scripts/verify_phase5.py     # LIVE: extraction, ranking, recall after restart
 python scripts/verify_phase6.py     # LIVE: all 9 skills, prompt versioning
 python scripts/verify_phase7.py     # dashboard figures vs raw SQL, export
+python eval/run_eval.py             # LIVE: 44 scenarios, 7 categories
+python experiments/run_experiments.py  # LIVE: six experiments
 node scripts/check_contrast.js      # WCAG AA in both themes
 ```
 

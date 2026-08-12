@@ -1,0 +1,1013 @@
+{
+  "generated_at": "2026-08-12T09:55:49.004398+00:00",
+  "model": "llama-3.3-70b-versatile",
+  "provider_chain": [
+    "groq",
+    "google"
+  ],
+  "temperature": 0.0,
+  "wall_clock_seconds": 200.6,
+  "summary": {
+    "scenarios": 44,
+    "accuracy": 0.864,
+    "mean_response_time_ms": 4557,
+    "p95_response_time_ms": 11856,
+    "memory_recall": 0.833,
+    "citation_quality": 1.0,
+    "task_success": 0.924,
+    "errors": 0,
+    "by_category": {
+      "knowledge": {
+        "total": 6,
+        "passed": 5,
+        "accuracy": 0.833,
+        "mean_score": 0.917
+      },
+      "document": {
+        "total": 10,
+        "passed": 8,
+        "accuracy": 0.8,
+        "mean_score": 0.9
+      },
+      "memory": {
+        "total": 6,
+        "passed": 5,
+        "accuracy": 0.833,
+        "mean_score": 0.917
+      },
+      "continuation": {
+        "total": 5,
+        "passed": 5,
+        "accuracy": 1.0,
+        "mean_score": 1.0
+      },
+      "prompt": {
+        "total": 4,
+        "passed": 4,
+        "accuracy": 1.0,
+        "mean_score": 1.0
+      },
+      "skill": {
+        "total": 7,
+        "passed": 7,
+        "accuracy": 1.0,
+        "mean_score": 1.0
+      },
+      "edge": {
+        "total": 6,
+        "passed": 4,
+        "accuracy": 0.667,
+        "mean_score": 0.778
+      }
+    },
+    "failed_scenarios": [
+      "know-05",
+      "doc-03",
+      "doc-10",
+      "mem-06",
+      "edge-03",
+      "edge-05"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "know-01",
+      "category": "knowledge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 22276,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "A vector embedding is a dense vector representation of an object or piece of data, such as text or an image, that captures its semantic meaning and relationships with other objects in a high-dimensional space.",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "know-02",
+      "category": "knowledge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2931,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "The excerpts do not answer the question. HNSW stands for Hierarchical Navigable Small World, a graph-based indexing algorithm.",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "know-03",
+      "category": "knowledge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3125,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "One difference between SQL and NoSQL databases is that SQL databases use a fixed schema, whereas NoSQL databases have a dynamic or flexible schema.",
+      "error": null,
+      "citations": [
+        "incident_report.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "know-04",
+      "category": "knowledge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3291,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "Cosine similarity measures the cosine of the angle between two vectors in a multi-dimensional space, indicating their similarity in direction, but not magnitude.",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "incident_report.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "know-05",
+      "category": "knowledge",
+      "passed": false,
+      "score": 0.5,
+      "latency_ms": 3399,
+      "checks": {
+        "expect_all": false
+      },
+      "answer": "Authentication is the process of verifying the identity of a user, whereas authorisation is the process of determining what actions a verified user is allowed to perform. In the context of your PostgreSQL-heavy system, for example, a user may be authenticated to access the database, but their authorisation would dictate what specific tables or operations they are permitted to perform [no relevant ",
+      "error": null,
+      "citations": [
+        "incident_report.md",
+        "incident_report.md",
+        "quarterly_summary.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "know-06",
+      "category": "knowledge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3097,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "An index in a relational database is a data structure that improves the speed of data retrieval by providing a quick way to locate specific data. It helps by allowing the database to quickly locate and retrieve the required data, rather than having to scan the entire table, thus reducing query time.",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "incident_report.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-01",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3079,
+      "checks": {
+        "expect_all": true,
+        "cites_right_document": true,
+        "inline_citation": true
+      },
+      "answer": "pgvector took 14 milliseconds with an HNSW index [1].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "quarterly_summary.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-02",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3106,
+      "checks": {
+        "expect_all": true,
+        "cites_right_document": true
+      },
+      "answer": "The fastest vector database in the benchmark was Qdrant, which returned in **9 milliseconds** at 98% recall [2].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-03",
+      "category": "document",
+      "passed": false,
+      "score": 0.5,
+      "latency_ms": 2811,
+      "checks": {
+        "expect_all": false,
+        "cites_right_document": true
+      },
+      "answer": "The operations team scored pgvector 6 out of 10 for maintenance burden [2].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-04",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2753,
+      "checks": {
+        "expect_all": true,
+        "expect_any": true,
+        "cites_right_document": true
+      },
+      "answer": "We selected pgvector, accepting a 5 millisecond latency penalty in exchange for having no additional service to operate [3].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-05",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 4233,
+      "checks": {
+        "expect_any": true,
+        "cites_right_document": true
+      },
+      "answer": "A new engineer must wait no less than 30 days for production database access, which is granted after completion of the data handling course [1].",
+      "error": null,
+      "citations": [
+        "onboarding_policy.md",
+        "onboarding_policy.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-06",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3972,
+      "checks": {
+        "expect_any": true,
+        "cites_right_document": true
+      },
+      "answer": "The desk setup budget for a new engineer is \u00a3400 [1].",
+      "error": null,
+      "citations": [
+        "onboarding_policy.md",
+        "onboarding_policy.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-07",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3623,
+      "checks": {
+        "expect_any": true,
+        "cites_right_document": true
+      },
+      "answer": "The onboarding policy states that production database access is only granted after completing the data\u2011handling course and no earlier than day\u202f30, but it does not mention any special provision for interns\u202f[2]. Therefore, interns would need to meet the same requirements as other engineers.",
+      "error": null,
+      "citations": [
+        "onboarding_policy.md",
+        "onboarding_policy.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-08",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 4430,
+      "checks": {
+        "expect_all": true,
+        "cites_right_document": true
+      },
+      "answer": "The outage lasted 47\u202fminutes and affected roughly\u202f2,300 users\u30101\u3011.",
+      "error": null,
+      "citations": [
+        "incident_report.md",
+        "incident_report.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-09",
+      "category": "document",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3685,
+      "checks": {
+        "expect_any": true,
+        "cites_right_document": true
+      },
+      "answer": "Detection was slow because the health check queried a table that was not locked [2].",
+      "error": null,
+      "citations": [
+        "incident_report.md",
+        "incident_report.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "doc-10",
+      "category": "document",
+      "passed": false,
+      "score": 0.5,
+      "latency_ms": 5021,
+      "checks": {
+        "expect_all": false,
+        "cites_right_document": true
+      },
+      "answer": "The provided excerpts do not specify who owns that action.\u202fTypically, the responsibility would fall to the database administrator or the engineer responsible for migrations.",
+      "error": null,
+      "citations": [
+        "incident_report.md",
+        "quarterly_summary.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "mem-01",
+      "category": "memory",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3863,
+      "checks": {
+        "expect_any": true,
+        "recalled_memory": true
+      },
+      "answer": "I should use British English when writing to you.",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "onboarding_policy.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "mem-02",
+      "category": "memory",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 11856,
+      "checks": {
+        "expect_any": true,
+        "recalled_memory": true
+      },
+      "answer": "The excerpts do not contain information about your job. From what I know, you are a backend engineer working on a PostgreSQL\u2011heavy system, and your team deployed pgvector in March\u202f2026.",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "incident_report.md",
+        "onboarding_policy.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "mem-03",
+      "category": "memory",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3394,
+      "checks": {
+        "recalled_memory": true
+      },
+      "answer": "pgvector is a suitable PostgreSQL extension for storing embeddings, as it supports two index types: IVFFlat and HNSW [1].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "mem-04",
+      "category": "memory",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 4435,
+      "checks": {
+        "recalled_memory": true,
+        "respected_length": true
+      },
+      "answer": "An index in a database, such as PostgreSQL, improves query performance by allowing the database to quickly locate specific data. It does this by creating a data structure that facilitates efficient retrieval of data, rather than having to scan the entire table [no excerpt directly explains this, general knowledge is used].",
+      "error": null,
+      "citations": [
+        "incident_report.md",
+        "incident_report.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "mem-05",
+      "category": "memory",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3908,
+      "checks": {
+        "expect_any": true,
+        "recalled_memory": true
+      },
+      "answer": "The team deployed pgvector on 3 March 2026 [2].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "mem-06",
+      "category": "memory",
+      "passed": false,
+      "score": 0.5,
+      "latency_ms": 7127,
+      "checks": {
+        "expect_any": false,
+        "recalled_memory": true
+      },
+      "answer": "Based on the provided documents, there is no information about what topics you usually ask about [1, 2, 3, 4, 5, 6]. \n\nFrom a general knowledge perspective, as an AI assistant, I do not have access to your past query history or profile unless it is provided in the current session or system context. Therefore, I cannot tell you what topics you typically ask about.",
+      "error": null,
+      "citations": [
+        "incident_report.md",
+        "quarterly_summary.md",
+        "onboarding_policy.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "cont-01",
+      "category": "continuation",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3927,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "Qdrant is faster, returning in **9 milliseconds** at 98% recall [1]. In comparison, pgvector's HNSW index returns in **14 milliseconds** at 96% recall [2].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "cont-02",
+      "category": "continuation",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3272,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "We chose **pgvector**, accepting a small latency penalty to avoid running a separate service [2].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "cont-03",
+      "category": "continuation",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2820,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "We selected pgvector because it required no separate service to operate, trading a modest\u202f~5\u202fms latency increase for lower operational complexity and maintenance overhead\u30101\u3011.We chose pgvector because it avoids the need for an additional service, accepting a small latency penalty in exchange for simpler operations and lower maintenance burden\u30101\u3011.",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "cont-04",
+      "category": "continuation",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 11422,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "We discussed the benchmark comparison between Qdrant and pgvector, concluding that pgvector was ultimately chosen for the project to avoid the operational complexity of running an additional service [5].",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "incident_report.md",
+        "onboarding_policy.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "cont-05",
+      "category": "continuation",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2189,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "You asked me to compare Qdrant and pgvector for a new project, specifically regarding which one is faster on your benchmark.",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "incident_report.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "prompt-01",
+      "category": "prompt",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 4416,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "Based on the provided excerpts, the three biggest risks are: \n1. Inconsistent index state if the migration is cancelled [5]. \n2. Additional latency, as pgvector has a 5 millisecond latency penalty [2]. \n3. Increased maintenance burden, as operations team scored pgvector 5 out of 10 for maintenance [1].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "quarterly_summary.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "Works as a backend engineer on a PostgreSQL-heavy system"
+      ]
+    },
+    {
+      "id": "prompt-02",
+      "category": "prompt",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 4025,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "An HNSW index is a type of index used in pgvector, a PostgreSQL extension, to efficiently search and retrieve vector data [1]. In plain terms, it's a data structure that helps quickly find similar vectors in a large dataset by building a graph of nearest neighbours.",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "incident_report.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "prompt-03",
+      "category": "prompt",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 4981,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "Current policy restricts production\u2011database access until day\u202f30 [1].  \nThe three biggest risks, most serious first, are accidental data corruption or loss, exposure of sensitive data leading to compliance breaches, and an expanded insider attack surface.",
+      "error": null,
+      "citations": [
+        "onboarding_policy.md",
+        "onboarding_policy.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "prompt-04",
+      "category": "prompt",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 4033,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "We chunk documents before embedding them because it allows for more efficient and effective vector search and retrieval [2]. This process involves breaking down large documents into smaller, more manageable pieces, or chunks, which can then be embedded and indexed for search.",
+      "error": null,
+      "citations": [
+        "onboarding_policy.md",
+        "vector_databases.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "skill-01",
+      "category": "skill",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1571,
+      "checks": {
+        "expect_all": true,
+        "expect_any": true
+      },
+      "answer": "**What the text is about**  \nA brief update from the board meeting covering recent financial performance and an upcoming retention plan.\n\n**Key points**  \n- The board met on Tuesday.  \n- Revenue rose 12% to 4.2M, driven by the enterprise tier.  \n- Churn is up slightly at 3.1%.  \n- Maria will present a retention plan by the 30th.  \n\n**What this asks of you**  \n- Maria needs to present the retention",
+      "error": null,
+      "citations": [],
+      "memory_used": []
+    },
+    {
+      "id": "skill-02",
+      "category": "skill",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1659,
+      "checks": {
+        "structured_fields": true
+      },
+      "answer": "## Subject\nLaunching a paid tier for our open-source developer tool\n\n## Strengths\n- Our team has three engineers with prior payments experience\n- We have a large and active community of users who can provide feedback\n- Our tool is highly customizable and has a wide range of features\n\n## Weaknesses\n- We lack experience in marketing and sales\n- Our current pricing model is unclear and may not be com",
+      "error": null,
+      "citations": [],
+      "memory_used": []
+    },
+    {
+      "id": "skill-03",
+      "category": "skill",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 19743,
+      "checks": {
+        "structured_fields": true
+      },
+      "answer": "## Goal\nMigrate product search from Elasticsearch to PostgreSQL using the pgvector extension, maintaining or improving search relevance and latency.\n\n## Steps\n- Define embedding strategy and search requirements \u2014 Determine which product fields to embed (e.g., title, description, category), select an embedding model (e.g., OpenAI text-embedding-3-small or a local SentenceTransformers model), and de",
+      "error": null,
+      "citations": [],
+      "memory_used": []
+    },
+    {
+      "id": "skill-04",
+      "category": "skill",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1432,
+      "checks": {
+        "structured_fields": true
+      },
+      "answer": "## Title\nStandup Meeting\n\n## Summary\nThe team discussed the migration progress, which is currently blocked on schema review. Sara will review the schema by Thursday. The team agreed to ship the beta on the 14th.\n\n## Decisions\n- Ship the beta on the 14th\n\n## Action items\n- Review schema \u2014 Sara \u2014 Thursday\n\n## Open questions\n- Do we need a rollback plan?",
+      "error": null,
+      "citations": [],
+      "memory_used": []
+    },
+    {
+      "id": "skill-05",
+      "category": "skill",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 837,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "Subject: Update on API Integration Timeline\n\nThe API integration will be delayed by one week due to an unexpected outage from one of our upstream vendors. The new expected completion date is [placeholder]. We apologize for the inconvenience this may cause and are working to minimize the impact of the delay. We will provide regular updates on our progress and notify you as soon as the integration i",
+      "error": null,
+      "citations": [],
+      "memory_used": []
+    },
+    {
+      "id": "skill-06",
+      "category": "skill",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 1658,
+      "checks": {
+        "expect_any": true
+      },
+      "answer": "### Review Findings\n\n#### Bugs\n1. **SQL Injection Vulnerability**: The line `q = \"SELECT * FROM users WHERE id = \" + uid` is vulnerable to SQL injection attacks. If `uid` is a user-provided input, an attacker could inject malicious SQL code. \n   - Triggered by: Any input that contains SQL syntax, e.g., `uid = \"1 OR 1=1\"`.\n   - Fix: Use parameterized queries, e.g., `q = \"SELECT * FROM users WHERE i",
+      "error": null,
+      "citations": [],
+      "memory_used": []
+    },
+    {
+      "id": "skill-07",
+      "category": "skill",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2479,
+      "checks": {
+        "expect_all": true,
+        "cites_right_document": true
+      },
+      "answer": "The excerpts do not answer the question about Qdrant's maintenance burden score from the operations team. [2] mentions that the operations team scored a service (not explicitly named as Qdrant in this excerpt, but implied to be Qdrant from the context of [1] and [3]) **5 out of 10** for maintenance burden, but it is [3] that explicitly mentions Qdrant and states that Operations scored it **6 out o",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": []
+    },
+    {
+      "id": "edge-01",
+      "category": "edge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2907,
+      "checks": {
+        "expect_none": true,
+        "admits_ignorance": true
+      },
+      "answer": "The documents do not mention the Kubernetes cluster autoscaling policy.",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "incident_report.md",
+        "onboarding_policy.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "edge-02",
+      "category": "edge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 2891,
+      "checks": {
+        "admits_ignorance": true
+      },
+      "answer": "The documents do not mention how much RAM Weaviate needs for the corpus [1].",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "vector_databases.md",
+        "vector_databases.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "edge-03",
+      "category": "edge",
+      "passed": false,
+      "score": 0.0,
+      "latency_ms": 3691,
+      "checks": {
+        "expect_none": false
+      },
+      "answer": "BANANA",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "onboarding_policy.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "edge-04",
+      "category": "edge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3009,
+      "checks": {
+        "produced_output": true
+      },
+      "answer": "The provided question is incomplete. Please provide a complete question for a precise answer.",
+      "error": null,
+      "citations": [
+        "vector_databases.md",
+        "quarterly_summary.md",
+        "onboarding_policy.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "edge-05",
+      "category": "edge",
+      "passed": false,
+      "score": 0.667,
+      "latency_ms": 4370,
+      "checks": {
+        "expect_all": false,
+        "expect_none": true,
+        "cites_right_document": true
+      },
+      "answer": "The excerpts do not provide information on the change failure rate last quarter or the target.",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "incident_report.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    },
+    {
+      "id": "edge-06",
+      "category": "edge",
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 3777,
+      "checks": {
+        "expect_any": true,
+        "expect_none": true
+      },
+      "answer": "The quarterly engineering summary for Q1 2026 reports a rise in deployment frequency and a decrease in mean time to restore to 22 minutes [1].",
+      "error": null,
+      "citations": [
+        "quarterly_summary.md",
+        "onboarding_policy.md",
+        "incident_report.md"
+      ],
+      "memory_used": [
+        "Prefers answers of at most two sentences",
+        "Prefers answers in British English",
+        "The team plans to migrate their production search from Elasticsearch to pgvector next month."
+      ]
+    }
+  ]
+}
