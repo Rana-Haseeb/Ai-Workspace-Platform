@@ -187,6 +187,45 @@ export interface MemoryUsed {
   content: string
 }
 
+export interface SkillSummary {
+  slug: string
+  name: string
+  category: string
+  description: string
+  icon: string
+  input_label: string
+  input_placeholder: string
+  uses_documents: boolean
+  structured: boolean
+  examples: string[]
+  use_count: number
+}
+
+export interface SkillRunResult {
+  slug: string
+  message_id: number | null
+  output: string
+  structured: Record<string, unknown> | null
+  citations: Citation[]
+  model: string | null
+  tokens_in: number
+  tokens_out: number
+  latency_ms: number
+}
+
+export interface PromptTemplate {
+  id: number
+  title: string
+  body: string
+  category: string
+  version: number
+  parent_id: number | null
+  is_current: boolean
+  use_count: number
+  workspace_id: number | null
+  created_at: string
+}
+
 export interface Message {
   id: number
   role: 'user' | 'assistant' | 'system'
@@ -308,6 +347,55 @@ export const documents = {
       method: 'POST',
       body: JSON.stringify({ query, top_k: topK }),
     }),
+}
+
+// ----------------------------------------------------------------------- skills
+export const skills = {
+  list: (workspaceId: number) =>
+    request<SkillSummary[]>(`/api/workspaces/${workspaceId}/skills`),
+
+  /** Pass a conversation id to have the run recorded in that transcript. */
+  run: (workspaceId: number, slug: string, input: string, conversationId?: number) =>
+    request<SkillRunResult>(`/api/workspaces/${workspaceId}/skills/${slug}/run`, {
+      method: 'POST',
+      body: JSON.stringify({ input, conversation_id: conversationId ?? null }),
+    }),
+}
+
+// --------------------------------------------------------------- prompt library
+export const prompts = {
+  list: (workspaceId: number, category?: string) =>
+    request<PromptTemplate[]>(
+      `/api/workspaces/${workspaceId}/prompts${category ? `?category=${category}` : ''}`,
+    ),
+
+  create: (workspaceId: number, body: {
+    title: string; body: string; category?: string; workspace_scoped?: boolean
+  }) =>
+    request<PromptTemplate>(`/api/workspaces/${workspaceId}/prompts`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  /** Returns the NEW version — the row you edited is retired, not changed. */
+  edit: (workspaceId: number, id: number, changes: {
+    title?: string; body?: string; category?: string
+  }) =>
+    request<PromptTemplate>(`/api/workspaces/${workspaceId}/prompts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(changes),
+    }),
+
+  history: (workspaceId: number, id: number) =>
+    request<PromptTemplate[]>(`/api/workspaces/${workspaceId}/prompts/${id}/history`),
+
+  use: (workspaceId: number, id: number) =>
+    request<PromptTemplate>(`/api/workspaces/${workspaceId}/prompts/${id}/use`, {
+      method: 'POST',
+    }),
+
+  remove: (workspaceId: number, id: number) =>
+    request<void>(`/api/workspaces/${workspaceId}/prompts/${id}`, { method: 'DELETE' }),
 }
 
 // ----------------------------------------------------------------------- memory

@@ -28,21 +28,23 @@ LLM layer ported from Week 4 (5 providers, cross-provider failover).
 | Deployment | Hugging Face Spaces, Docker — one container, uvicorn serves API + SPA |
 | Workflow | Approve each phase before it starts |
 
-**Progress:** Phases 0–5 complete and verified — foundations, authentication with tenant
+**Progress:** Phases 0–6 complete and verified — foundations, authentication with tenant
 isolation, workspace CRUD with the eight assistant settings, persistent chat with token
 streaming, a knowledge base that answers with page-level citations, and long-term memory that
-survives a restart. Next: Phase 6 — prompt library and reusable skills.
+survives a restart, and a prompt library plus nine reusable skills.
+Next: Phase 7 — dashboard and the advanced features.
 
 Gates, all currently passing:
 
 ```bash
-python -m pytest                    # 201 tests, no network
+python -m pytest                    # 268 tests, no network
 python scripts/verify_phase0.py     # schema, indexes, secrets hygiene, themes
 python scripts/verify_phase1.py     # hashing, tokens, 403 isolation
 python scripts/verify_phase2.py     # workspace CRUD, 8 settings fields, persistence
 python scripts/verify_phase3.py     # LIVE: real replies, streaming, search, restart
 python scripts/verify_phase4.py     # LIVE: real PDF -> embeddings -> cited answers
 python scripts/verify_phase5.py     # LIVE: extraction, ranking, recall after restart
+python scripts/verify_phase6.py     # LIVE: all 9 skills, prompt versioning
 node scripts/check_contrast.js      # WCAG AA in both themes
 ```
 

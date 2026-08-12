@@ -7,7 +7,9 @@ import Chat from '@/routes/Chat'
 import Documents from '@/routes/Documents'
 import Login from '@/routes/Login'
 import Memory from '@/routes/Memory'
+import Prompts from '@/routes/Prompts'
 import Register from '@/routes/Register'
+import Skills from '@/routes/Skills'
 import WorkspaceHome from '@/routes/WorkspaceHome'
 import WorkspaceIndex from '@/routes/WorkspaceIndex'
 import WorkspaceSettings from '@/routes/WorkspaceSettings'
@@ -80,6 +82,8 @@ export default function App() {
         <Route path="c/:conversationId" element={<Chat />} />
         <Route path="documents" element={<Documents />} />
         <Route path="memory" element={<Memory />} />
+        <Route path="prompts" element={<Prompts />} />
+        <Route path="skills" element={<Skills />} />
         <Route path="settings" element={<WorkspaceSettings />} />
       </Route>
 

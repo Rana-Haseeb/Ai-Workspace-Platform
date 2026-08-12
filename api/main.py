@@ -36,6 +36,19 @@ async def lifespan(app: FastAPI):
     except ImportError:  # pragma: no cover — only if the dependency is genuinely absent
         log.warning("langchain_openai is not installed; chat will fail until it is")
 
+    # Mirror the code registry into the skills table, so a newly added skill is listable and
+    # countable the moment the server boots — no migration, no manual insert.
+    from db.base import SessionLocal
+    from services import skill_service
+
+    session = SessionLocal()
+    try:
+        skill_service.sync_registry(session)
+    except Exception as error:  # noqa: BLE001 — never let this stop the app starting
+        log.warning("Could not sync the skill registry: %s", error)
+    finally:
+        session.close()
+
     log.info(
         "API ready - %s, provider chain: %s",
         "SQLite" if settings.is_sqlite() else "PostgreSQL",
@@ -63,13 +76,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from api.routers import auth, conversations, documents, memory, workspaces
+    from api.routers import auth, conversations, documents, memory, skills, workspaces
 
     app.include_router(auth.router)
     app.include_router(workspaces.router)
     app.include_router(conversations.router)
     app.include_router(documents.router)
     app.include_router(memory.router)
+    app.include_router(skills.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:

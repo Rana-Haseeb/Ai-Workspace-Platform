@@ -30,7 +30,7 @@ export default function WorkspaceHome() {
     { icon: MessagesSquare, label: 'Chat with history and streaming', phase: 'Ready' },
     { icon: FileText, label: 'Documents with cited answers', phase: 'Ready' },
     { icon: BrainCircuit, label: 'Memory that persists across sessions', phase: 'Ready' },
-    { icon: Sparkles, label: 'Prompt library and reusable skills', phase: 'Phase 6' },
+    { icon: Sparkles, label: 'Prompt library and reusable skills', phase: 'Ready' },
   ]
 
   return (

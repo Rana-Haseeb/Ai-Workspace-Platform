@@ -22,8 +22,8 @@ import type { WorkspaceDetail } from '@/lib/api'
 const SECTIONS = [
   { to: 'documents', label: 'Documents', icon: FileText, ready: true, phase: '' },
   { to: 'memory', label: 'Memory', icon: BrainCircuit, ready: true, phase: '' },
-  { to: 'prompts', label: 'Prompts', icon: Library, ready: false, phase: 'P6' },
-  { to: 'skills', label: 'Skills', icon: Sparkles, ready: false, phase: 'P6' },
+  { to: 'prompts', label: 'Prompts', icon: Library, ready: true, phase: '' },
+  { to: 'skills', label: 'Skills', icon: Sparkles, ready: true, phase: '' },
   { to: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, ready: false, phase: 'P7' },
   { to: 'settings', label: 'Settings', icon: Settings, ready: true, phase: '' },
 ] as const

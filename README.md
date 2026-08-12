@@ -9,7 +9,7 @@ something you said three sessions ago.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-CA4245?style=for-the-badge)](https://sqlalchemy.org)
-[![Tests](https://img.shields.io/badge/tests-201_passing-success?style=for-the-badge)](tests/)
+[![Tests](https://img.shields.io/badge/tests-268_passing-success?style=for-the-badge)](tests/)
 [![WCAG](https://img.shields.io/badge/WCAG-AA_verified-0F9D58?style=for-the-badge)](scripts/check_contrast.js)
 
 <samp>Visibility Bots Innovation Lab · AI Summer Fellowship 2026 · Track 2: NLP & AI Agents · **Week 5**</samp>
@@ -41,6 +41,8 @@ something you said three sessions ago.**
 - [Testing and verification](#testing-and-verification)
 - [How the knowledge base works](#how-the-knowledge-base-works)
 - [How memory works](#how-memory-works)
+- [How skills work](#how-skills-work)
+- [How prompt versioning works](#how-prompt-versioning-works)
 - [Design system](#design-system)
 - [Measured performance](#measured-performance)
 - [Deployment](#deployment)
@@ -85,7 +87,7 @@ done until that output passes.
 | 3 | Persistent chat with token streaming | ✅ |
 | 4 | Knowledge base and document intelligence with citations | ✅ |
 | 5 | Long-term memory | ✅ |
-| 6 | Prompt library and reusable skills | ⬜ |
+| 6 | Prompt library and reusable skills | ✅ |
 | 7 | Dashboard and advanced features | ⬜ |
 | 8 | 40 evaluation scenarios, 6 experiments | ⬜ |
 | 9 | Full test suite, security review, performance report | ⬜ |
@@ -98,17 +100,18 @@ The full plan, including the specification and gate for every phase, is in
 **Currently passing:**
 
 ```
-201 tests passed
+268 tests passed
 PHASE 0 PASSED - 12 tables, 8 settings fields, 7 indexed keys, 2 themes.
 PHASE 1 PASSED - argon2 hashing, signed sessions, and 403 isolation verified.
 PHASE 2 PASSED - workspace CRUD, 8 assistant fields, validation, persistence.
 PHASE 3 PASSED - live replies, titling, history, streaming, search, persistence.
 PHASE 4 PASSED - real PDF ingested, embedded, retrieved, and cited by page.
 PHASE 5 PASSED - extracted live, ranked, injected across a restart, user-editable.
+PHASE 6 PASSED - 9 skills ran live, prompts version cleanly.
 All pairs meet WCAG AA.
 ```
 
-Phases 3, 4 and 5 are the gates that call real providers, because what they verify only means
+Phases 3 to 6 are the gates that call real providers, because what they verify only means
 something live: that a reply arrives, that a real PDF becomes a checkable citation, and that a
 real model decides what is worth remembering. The test suite itself stays offline.
 
@@ -138,11 +141,15 @@ real model decides what is worth remembering. The test suite itself stays offlin
 | **Long-term memory** | Preferences and durable facts are extracted from conversation automatically and applied to later sessions, in different conversations, after a restart |
 | **Memory you control** | Every remembered item is listed, editable, pinnable and deletable, with one button to forget everything |
 | **Visible recall** | A chip on each answer shows exactly which memories were applied, beside the document citations |
+| **Nine reusable skills** | Summarise, research, meeting notes, task planner, SWOT, report, email, code review, ideas — available in every workspace |
+| **Structured skill output** | A SWOT returns four lists, not four paragraphs; a plan returns steps with estimates and dependencies |
+| **Slash palette** | Type `/` in the chat box to run a skill inline; the result is stored in the transcript like any other message |
+| **Prompt library** | Saved prompts by category, and editing one creates a new **version** rather than overwriting it |
 | **Dark and light themes** | Dark by default, applied before first paint. Every colour pair verified against WCAG AA in both |
 
 ### Coming in later phases
 
-Prompt library with versioning · six reusable skills · usage dashboard · conversation export.
+Usage dashboard · conversation export · tagging.
 
 ---
 
@@ -421,6 +428,19 @@ memories with a null `workspace_id` appear in every workspace's list.
 | `DELETE` | `/memory/{id}` | Forget one |
 | `DELETE` | `/memory` | Forget everything |
 
+### Skills and prompts
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/skills` | Every registered skill, with usage counts |
+| `POST` | `/skills/{slug}/run` | Run one. Pass `conversation_id` to store it in a transcript |
+| `GET` | `/prompts?category=` | Current versions only |
+| `POST` | `/prompts` | Save a prompt |
+| `PATCH` | `/prompts/{id}` | **Returns a new version** — the row you sent is retired |
+| `GET` | `/prompts/{id}/history` | Every version, oldest first |
+| `POST` | `/prompts/{id}/use` | Record a use and return the text |
+| `DELETE` | `/prompts/{id}` | Delete the prompt and all its versions |
+
 ### Meta
 
 | Method | Path | Purpose |
@@ -533,6 +553,63 @@ visible off switch. Everything extracted is listed with its importance, its rank
 is currently in context; every item can be corrected, re-weighted, pinned or deleted, and one
 button forgets all of it. A system that silently accumulates claims about someone and offers no
 way to see them is one nobody should trust.
+
+---
+
+## How skills work
+
+**A skill is data, not code.** A system prompt plus enough metadata to render and run it. That
+is the whole definition, and it has one deliberate consequence:
+
+> **Adding a skill is one new file and one line in the registry.**
+> No new route, no new execution path, no test to write.
+
+```python
+# skills/builtin/my_skill.py
+SKILL = Skill(slug="translate", name="Translate", category="writing", ...)
+
+# skills/registry.py — add "my_skill" to MODULES
+```
+
+The parameterised tests in `tests/test_skills.py` iterate the registry, so a new skill gains
+test coverage the moment it is registered.
+
+The alternative — a class per skill with its own `run` method — buys flexibility almost no skill
+needs and costs a new code path for each one. Where a skill genuinely benefits from structure, it
+declares an `output_schema` and the shared runner switches to structured output. That covers the
+real variation without giving every skill its own machinery.
+
+### Three details that matter
+
+**Skills do not inherit the workspace persona.** They reuse its model, temperature and token
+ceiling, but not its system prompt — a skill's instructions *are* the skill, and layering a
+persona on top is how a SWOT ends up written in the second person.
+
+**Structured skills produce text too.** The text is derived from the structure rather than asked
+for separately, so the two cannot disagree, and a copy-paste or plain-text export still works.
+
+**A skill run from the chat box is stored in the conversation.** It arrives as a normal
+user/assistant pair, so it survives a reload and sits in the transcript with everything else.
+
+---
+
+## How prompt versioning works
+
+**Editing a prompt never overwrites it.** The edit inserts a new row whose `parent_id` points at
+the previous version and whose `version` increments; the old row is marked `is_current=False` and
+stays in the table forever.
+
+The reason is traceability. A conversation from last week was produced by a specific prompt, and
+if that prompt has since been "improved", re-reading the conversation with the current text in
+hand is misleading. Mutating in place destroys the only record of what actually ran, and *"why
+did this answer change?"* becomes unanswerable.
+
+The cost is rows that accumulate. That is the cheap half of the trade: storage is inexpensive,
+and history is not recoverable once discarded.
+
+Two refinements the tests pin down: an edit that changes nothing returns the existing row rather
+than minting an identical version, and `use_count` follows the prompt across versions — a prompt
+used forty times is still that prompt after a wording change.
 
 ---
 
@@ -791,7 +868,10 @@ is a surprise.
 - **Memory has no semantic de-duplication.** "Prefers concise answers" and "Likes short replies"
   would both be stored. The model is shown existing memories and mostly avoids this; the string
   check behind it only catches exact near-matches.
-- **Phases 6–11 are not built.** The sidebar shows those sections disabled with the phase they
+- **Skills have no streaming.** A skill run returns when it is finished, so a long report sits
+  behind a spinner where chat would have shown tokens arriving.
+- **Skill output is not editable in place.** It can be copied, or re-run with different input.
+- **Phases 7–11 are not built.** The sidebar shows those sections disabled with the phase they
   arrive in, rather than hiding them.
 
 ---

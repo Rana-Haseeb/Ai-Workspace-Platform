@@ -7,6 +7,7 @@ import { Composer } from '@/components/chat/Composer'
 import { MessageBubble } from '@/components/chat/MessageBubble'
 import {
   conversations,
+  skills as skillsApi,
   type Citation,
   type MemoryUsed,
   type Message,
@@ -55,6 +56,11 @@ export default function Chat() {
     enabled: Number.isFinite(id),
   })
 
+  const { data: availableSkills } = useQuery({
+    queryKey: ['skills', workspace.id],
+    queryFn: () => skillsApi.list(workspace.id),
+  })
+
   const streaming = streamed !== null
 
   // Follow the reply as it grows. `block: 'end'` rather than smooth scrolling — a smooth scroll
@@ -68,8 +74,28 @@ export default function Chat() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversation', id] }),
   })
 
-  async function send(text: string) {
+  async function send(text: string, skillSlug?: string) {
     setError(null)
+
+    // A skill run is a one-shot call, not a conversation turn: it has its own system prompt and
+    // no history. Sending it down the chat stream would layer the workspace persona on top of
+    // the skill's instructions, which is exactly what the skill is trying to replace.
+    if (skillSlug) {
+      setPending(text)
+      try {
+        // The conversation id makes the backend store the run as a user/assistant pair, so the
+        // result survives a reload instead of living only in this component's state.
+        await skillsApi.run(workspace.id, skillSlug, text, id)
+        await queryClient.invalidateQueries({ queryKey: ['conversation', id] })
+        queryClient.invalidateQueries({ queryKey: ['conversations', workspace.id] })
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'The skill failed.')
+      } finally {
+        setPending(null)
+      }
+      return
+    }
+
     setPending(text)
     setStreamed('')
     setStreamCitations([])
@@ -170,6 +196,7 @@ export default function Chat() {
         onStop={() => abortRef.current?.abort()}
         streaming={streaming}
         placeholder={`Message ${assistantName}`}
+        skills={availableSkills ?? []}
       />
     </div>
   )
