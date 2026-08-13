@@ -92,6 +92,35 @@ console.log('\n4. No emoji used as an icon')
   )
 }
 
+console.log('\n5. Chart axes cannot clip their own labels')
+{
+  // Shipped broken once. A negative left margin pulls the Y axis outside the plot area, which is
+  // invisible while the labels are short — and then a five-digit value has its leading character
+  // clipped. A real 16,000 rendered as "6000", so the axis read 6000, 2000, 8000, 4000, 0:
+  // descending nonsense, on the one screen whose entire claim is that its figures are exact.
+  //
+  // Only found by taking a screenshot with realistic data in it. Neither a type checker nor a
+  // unit test renders an axis, so the root cause is asserted here instead.
+  const offenders = files.filter((path) => {
+    const source = read(path)
+    if (!/recharts|<BarChart|<LineChart|<AreaChart/.test(source)) return false
+    return /margin=\{\{[^}]*(top|right|bottom|left)\s*:\s*-\d/.test(source)
+  })
+  check(
+    'no negative margin on a chart',
+    offenders.length === 0,
+    offenders.map((p) => relative(ROOT, p)).join(', '),
+  )
+
+  // A numeric axis needs a formatter, or it prints the raw value and grows without bound.
+  const dashboard = join(SRC, 'routes/Dashboard.tsx')
+  const source = read(dashboard)
+  check(
+    'the token axis formats its ticks compactly',
+    /tickFormatter=\{compactTokens\}/.test(source) && /function compactTokens/.test(source),
+  )
+}
+
 if (failures > 0) {
   console.log(`\n${failures} rule violation(s).\n`)
   process.exit(1)

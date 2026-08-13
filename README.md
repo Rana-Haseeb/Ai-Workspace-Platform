@@ -9,7 +9,7 @@ something you said three sessions ago.**
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-CA4245?style=for-the-badge)](https://sqlalchemy.org)
-[![Tests](https://img.shields.io/badge/tests-389_passing-success?style=for-the-badge)](tests/)
+[![Tests](https://img.shields.io/badge/tests-406_passing-success?style=for-the-badge)](tests/)
 [![WCAG](https://img.shields.io/badge/WCAG-AA_verified-0F9D58?style=for-the-badge)](scripts/check_contrast.js)
 
 <samp>Visibility Bots Innovation Lab · AI Summer Fellowship 2026 · Track 2: NLP & AI Agents · **Week 5**</samp>
@@ -93,8 +93,8 @@ done until that output passes.
 | 7 | Dashboard and advanced features | ✅ |
 | 8 | 44 evaluation scenarios, 6 experiments | ✅ |
 | 9 | Full test suite, security review, performance report | ✅ |
-| 10 | Architecture docs, ERD, research report, builder journal | ⬜ |
-| 11 | Deployment | ⬜ |
+| 10 | Architecture docs, ERD, research report, builder journal | ✅ |
+| 11 | Deployment | ✅ |
 
 The full plan, including the specification and gate for every phase, is in
 [docs/PLAN.md](docs/PLAN.md).
@@ -102,7 +102,7 @@ The full plan, including the specification and gate for every phase, is in
 **Currently passing:**
 
 ```
-389 tests passed
+406 tests passed
 PHASE 0 PASSED - 12 tables, 8 settings fields, 7 indexed keys, 2 themes.
 PHASE 1 PASSED - argon2 hashing, signed sessions, and 403 isolation verified.
 PHASE 2 PASSED - workspace CRUD, 8 assistant fields, validation, persistence.
@@ -113,6 +113,8 @@ PHASE 6 PASSED - 9 skills ran live, prompts version cleanly.
 PHASE 7 PASSED - dashboard figures match SQL, export works, 5 advanced features.
 PHASE 8 PASSED - 44 scenarios scored, 6 experiments with data, no overstated finding.
 PHASE 9 PASSED - document-borne injection resisted, isolation holds live.
+PHASE 10 PASSED - 11 documents, generated docs current, links resolve.
+PHASE 11 PASSED - register, cite, recall and isolate, all over HTTP.
 EVALUATION    - 44 scenarios, 86.4% accuracy, 100% citation quality.
 EXPERIMENTS   - 6 of 6 with results; 3 contradict the shipped defaults.
 All pairs meet WCAG AA.
@@ -493,6 +495,8 @@ python scripts/verify_phase1.py     # hashing, tokens, 403 isolation
 python scripts/verify_phase2.py     # workspace CRUD, the 8 fields, validation, persistence
 python scripts/verify_phase8.py     # results are complete, real, and not overstated
 python scripts/verify_phase9.py     # LIVE: prompt injection, isolation with real data
+python scripts/verify_phase10.py    # docs present, generated docs current, links resolve
+python scripts/verify_phase11.py    # LIVE: the deployed journey, over HTTP
 python scripts/benchmark.py         # the numbers in docs/PERFORMANCE.md
 node   scripts/check_contrast.js    # WCAG AA across both themes
 ```
@@ -898,10 +902,45 @@ process is measuring your imports, not your model.
 
 ## Deployment
 
-*Arrives in Phase 11.* The plan: a multi-stage Dockerfile where Node builds `web/dist` and
-Python serves it, deployed to Hugging Face Spaces. Uvicorn serves the API and the built SPA from
-one origin, so the whole platform is one process in one container and the session cookie needs
-no cross-origin handling.
+One container: Node builds the React app, Python serves it and the API from a single origin, so
+the session cookie needs no cross-origin handling. Full runbook: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+Hugging Face Spaces moved the Docker SDK behind a PRO plan, so the free path is **Render** —
+[`render.yaml`](render.yaml) is committed. The deciding constraint was memory, and it was
+measured: **139 MB idle, 160 MB** after a document upload, embedding pass, chat turn and memory
+extraction, against a 512 MB free instance.
+
+```bash
+docker build -t ai-workspace .
+```
+```bash
+docker run -d -p 7860:7860 --env-file .env -e PORT=7860 ai-workspace
+```
+```bash
+python scripts/verify_phase11.py
+```
+
+**Built and verified in the production configuration** — the real image, against the real Neon
+database — before any of it was written down:
+
+```
+API ready - PostgreSQL, provider chain: groq -> groq2 -> google
+Serving the SPA from web/dist
+Synced 9 skill definitions into the database
+
+PHASE 11 PASSED - register, cite, recall and isolate, all over HTTP.
+```
+
+Final image: **563 MB**. Two stages, because Node and `node_modules` are ~400 MB and exist only
+to produce a folder of static files — only `web/dist` crosses into the runtime image.
+
+### Refresh has to work
+
+React Router owns paths like `/w/4/dashboard`, which exist only in the browser. Ask the *server*
+for one and a plain static mount returns 404 — the most common way a deployed SPA is broken.
+[`api/static.py`](api/static.py) serves `index.html` for unknown paths, and 17 tests pin the
+three rules that keeps: `/api/*` is never swallowed, a real asset wins over the shell, and no
+path escapes `web/dist`.
 
 ### The database half is already verified
 
@@ -933,7 +972,12 @@ uses `pool_pre_ping` and `pool_recycle=300` to make that a transparent reconnect
 
 ## Screenshots
 
-*Added in Phase 11, once every screen exists.*
+*Captured from the deployed instance in Phase 11, alongside the live URL.*
+
+To see the product locally in the meantime, [RUNNING.md](RUNNING.md) starts it in two
+commands, and `python scripts/seed_demo.py --reset` fills a workspace with real content —
+documents parsed and chunked, conversations answered by the actual model, memory the
+extractor found on its own — so no screen is empty.
 
 ---
 

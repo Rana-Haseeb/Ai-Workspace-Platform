@@ -24,7 +24,7 @@ LLM layer ported from Week 4 (5 providers, cross-provider failover).
 |---|---|
 | Frontend | React + Vite + Tailwind + shadcn/ui |
 | Theme | Dark primary, light mode as a toggle (counts as an advanced feature) |
-| Database | SQLAlchemy — SQLite local/tests, Supabase Postgres in production |
+| Database | SQLAlchemy — SQLite local/tests, **Neon** Postgres in production |
 | Deployment | Hugging Face Spaces, Docker — one container, uvicorn serves API + SPA |
 | Workflow | Approve each phase before it starts |
 
@@ -33,12 +33,14 @@ isolation, workspace CRUD with the eight assistant settings, persistent chat wit
 streaming, a knowledge base that answers with page-level citations, and long-term memory that
 survives a restart, a prompt library plus nine reusable skills, and a usage dashboard with five
 advanced features, plus 44 evaluation scenarios and six experiments with real measured results.
-Next: Phase 10 — architecture doc, ERD, API docs, research report, builder journal.
+**All eleven phases complete.** Remaining work is the author's: create the Hugging Face
+Space, set its secrets, push, and run the gate against the live URL.
+See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 Gates, all currently passing:
 
 ```bash
-python -m pytest                    # 389 tests, no network
+python -m pytest                    # 406 tests, no network
 python scripts/verify_phase0.py     # schema, indexes, secrets hygiene, themes
 python scripts/verify_phase1.py     # hashing, tokens, 403 isolation
 python scripts/verify_phase2.py     # workspace CRUD, 8 settings fields, persistence
@@ -237,7 +239,7 @@ GOOGLE_API_KEY=
 OPENROUTER_API_KEY=
 
 # ---- Database ----
-# Local dev/tests use SQLite. Production sets this to the Supabase session-pooler URL.
+# Local dev/tests use SQLite. Production sets this to the Neon pooler URL.
 DATABASE_URL=sqlite:///./workspace.db
 
 # ---- Auth ----
@@ -334,7 +336,7 @@ def test_no_secret_has_a_hardcoded_default():
 
 One set of models serves two dialects. SQLite gets ``check_same_thread=False`` because
 FastAPI serves requests on a threadpool; Postgres gets connection pooling with
-``pool_pre_ping`` so Supabase's pooler dropping an idle connection does not surface as a
+``pool_pre_ping`` so the pooler dropping an idle connection does not surface as a
 500. Nothing else in the codebase knows which database is underneath — that is the point.
 """
 from __future__ import annotations
@@ -621,7 +623,14 @@ research report (≤5 pages), builder journal (≤2 pages).
 ### Phase 11 — Deployment
 Multi-stage Dockerfile: node builds `web/dist`, python serves it. `api/static.py` mounts the SPA
 with a catch-all so client-side routes survive a refresh. Deployed to Hugging Face Spaces with
-secrets set in the Space and `DATABASE_URL` pointed at Supabase Postgres.
+secrets set in the Space and `DATABASE_URL` pointed at **Neon** Postgres.
+
+**Decided:** production runs on Neon, not SQLite. A Space's filesystem is ephemeral, so
+SQLite would lose every account and conversation on each restart or redeploy — which is
+not a platform. Verified on 2026-08-13 with `python scripts/check_postgres.py --from-env
+NEON_DATABASE_URL`: PostgreSQL 18.4, all 12 tables created, JSON and vector columns
+round-trip, cascade deletes work, pgvector available. **Local development and the whole
+test suite stay on SQLite** — the switch is one environment variable in the Space.
 **Gate:** on the live URL — register a new account, create a workspace, upload a document, get a
 cited answer, and have memory recall in a second session.
 

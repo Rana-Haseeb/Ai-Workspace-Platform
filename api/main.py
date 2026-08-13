@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.static import mount_spa
 from core.config import settings
 from core.logging import get_logger
 from core.rate_limit import RateLimitMiddleware
@@ -101,6 +102,10 @@ def create_app() -> FastAPI:
             "database": "sqlite" if settings.is_sqlite() else "postgresql",
             "providers_configured": len(settings.provider_chain()),
         }
+
+    # Last, because route matching is ordered and this ends in a catch-all. Registered before
+    # the routers above, it would shadow every endpoint in the application.
+    mount_spa(app)
 
     return app
 

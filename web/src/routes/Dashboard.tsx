@@ -39,6 +39,13 @@ const EVENT_LABEL: Record<string, string> = {
   embed: 'Embeddings',
 }
 
+/** Axis ticks that stay narrow at any magnitude: 0, 900, 4k, 16k, 1.2M. */
+function compactTokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`
+  return String(value)
+}
+
 export default function Dashboard() {
   const workspace = useOutletContext<WorkspaceDetail>()
 
@@ -99,7 +106,7 @@ export default function Dashboard() {
         <CardContent>
           <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
+              <BarChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -109,10 +116,18 @@ export default function Dashboard() {
                   axisLine={false}
                 />
                 <YAxis
+                  // Compact ticks, and no negative left margin.
+                  //
+                  // Both matter, and the bug needed both to show up: `left: -18` pulled the axis
+                  // outside the plot area, which is invisible while the labels are short. At
+                  // five digits the leading character was clipped, so a real 16,000 rendered as
+                  // "6000" and the axis read 6000, 2000, 8000, 4000, 0 — descending nonsense on
+                  // a dashboard whose whole claim is that its figures are trustworthy.
+                  tickFormatter={compactTokens}
                   tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                   tickLine={false}
                   axisLine={false}
-                  width={52}
+                  width={40}
                 />
                 <Tooltip
                   cursor={{ fill: 'var(--muted)' }}

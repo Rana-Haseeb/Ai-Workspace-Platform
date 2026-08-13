@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus } from 'lucide-react'
+
+import { BrandMark } from '@/components/brand/BrandMark'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { workspaceIcon } from '@/lib/icons'
@@ -24,9 +26,7 @@ export function WorkspaceRail({
       aria-label="Workspaces"
       className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-border bg-sidebar py-3"
     >
-      <div className="mb-2 flex size-9 items-center justify-center rounded-lg bg-primary">
-        <Sparkles className="size-4 text-primary-foreground" aria-hidden />
-      </div>
+      <BrandMark className="mb-2 size-9 shrink-0 text-primary" />
 
       {workspaces.map((workspace) => {
         const Icon = workspaceIcon(workspace.icon)

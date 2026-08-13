@@ -1,0 +1,47 @@
+# Render blueprint. Free tier, Docker, no credit card.
+#
+# Hugging Face Spaces moved the Docker SDK behind a PRO plan, so this is the free path. The
+# constraint that mattered was memory: Render's free instance is 512 MB, and this image was
+# measured at 139 MB idle and 160 MB after a full document upload, embedding pass, chat turn and
+# memory extraction. It fits with room to spare.
+#
+# Deploy: push this repo to GitHub, then Render Dashboard -> New -> Blueprint -> pick the repo.
+# You are prompted for each `sync: false` value; nothing secret lives in this file.
+
+services:
+  - name: ai-workspace
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    # Render sets $PORT itself; the Dockerfile's CMD already honours it.
+    healthCheckPath: /api/health
+    envVars:
+      # ---- required, entered in the dashboard ----
+      # The Neon POOLER string. Not the direct host, and not SQLite: a free instance restarts
+      # with an empty filesystem, so SQLite would lose every account on each deploy.
+      - key: DATABASE_URL
+        sync: false
+      # Generate a fresh one for production:
+      #   python -c "import secrets; print(secrets.token_urlsafe(48))"
+      - key: JWT_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # A second Groq *organisation* — a genuine second free-tier allowance, not the same
+      # bucket renamed. Leave blank if you only have one.
+      - key: GROQ_API_KEY_2
+        sync: false
+      # Embeddings, and a chat fallback.
+      - key: GOOGLE_API_KEY
+        sync: false
+
+      # ---- fixed configuration ----
+      - key: LLM_FALLBACK_PROVIDERS
+        value: groq2,google
+      # Same origin in production: uvicorn serves the API and the built SPA together, so there
+      # is no cross-origin request to allow.
+      - key: CORS_ORIGINS
+        value: ""
+      - key: PYTHONUNBUFFERED
+        value: "1"

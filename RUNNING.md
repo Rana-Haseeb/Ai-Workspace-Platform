@@ -92,7 +92,7 @@ All of these run from the project root.
 python -m pytest
 ```
 
-389 tests, about 70 seconds, and **genuinely no network** — verified by running the whole suite
+406 tests, about 70 seconds, and **genuinely no network** — verified by running the whole suite
 with a deliberately invalid `GOOGLE_API_KEY`, which still passes. That claim used to be false:
 the chat path embeds every query for retrieval, so any test sending a message was quietly calling
 the live Google API. It passed on available quota and hung for minutes per test once the free
@@ -117,6 +117,9 @@ python scripts/verify_phase7.py
 ```bash
 python scripts/verify_phase8.py
 ```
+```bash
+python scripts/verify_phase10.py
+```
 
 ```bash
 python scripts/benchmark.py --offline
@@ -140,6 +143,15 @@ python scripts/verify_phase6.py
 python scripts/verify_phase9.py
 ```
 
+And this one needs a **running deployment** — the container, or the live Space:
+
+```bash
+python scripts/verify_phase11.py
+```
+```bash
+python scripts/verify_phase11.py --url https://<user>-<space>.hf.space
+```
+
 ### Other checks
 
 ```bash
@@ -152,6 +164,13 @@ node scripts/check_frontend_rules.js
 ```
 Structural rules a type checker cannot see: only `lib/api.ts` talks HTTP, the shell has a
 working scroll container, scrollbars are styled, no emoji used as icons.
+
+```bash
+python scripts/seed_demo.py --reset
+```
+Fills a workspace with real content — documents, conversations, memory, prompts — so every screen
+has something on it. Needs the API running. Sign in with `demo@example.com` /
+`correct-horse-battery`.
 
 ```bash
 python scripts/probe_providers.py
@@ -205,7 +224,7 @@ db/models.py  the 12 tables
 skills/       one file per skill     — add one here
 web/src/      the React app
 scripts/      verification, one per phase + benchmark.py
-tests/        389 tests
+tests/        406 tests
 ```
 
 Two rules the code follows, with tests behind them:

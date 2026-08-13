@@ -1,4 +1,6 @@
 import { Brain, FileText, Sparkles } from 'lucide-react'
+
+import { BrandMark } from '@/components/brand/BrandMark'
 import type { ReactNode } from 'react'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -42,9 +44,7 @@ export function AuthLayout({
     <div className="grid min-h-dvh lg:grid-cols-2">
       <aside className="relative hidden flex-col justify-between bg-sidebar p-12 lg:flex">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-            <Sparkles className="size-4 text-primary-foreground" aria-hidden />
-          </div>
+          <BrandMark className="size-8 text-primary" />
           <span className="font-semibold tracking-tight">AI Workspace</span>
         </div>
 
@@ -77,9 +77,7 @@ export function AuthLayout({
 
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-              <Sparkles className="size-4 text-primary-foreground" aria-hidden />
-            </div>
+            <BrandMark className="size-8 text-primary" />
             <span className="font-semibold tracking-tight">AI Workspace</span>
           </div>
 
