@@ -3,9 +3,15 @@
 One container. Node builds the React app, Python serves both it and the API from a single
 origin, and the data lives in managed Postgres.
 
-Everything below has been run end to end against the real production configuration — the image,
-on Neon — before being written down. What has **not** been done is creating the hosting account
-and pushing, because that is the author's to do.
+**Live: https://ai-workspace-fx09.onrender.com** — sign in as `demo@example.com` /
+`correct-horse-battery`.
+
+Everything below was run end to end against the real production configuration — the image, on
+Neon — and then again against the deployed URL. The acceptance gate passes on the live service:
+
+```
+PHASE 11 PASSED - register, cite, recall and isolate, all over HTTP.
+```
 
 ---
 

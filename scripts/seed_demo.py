@@ -2,6 +2,7 @@
 
     python scripts/seed_demo.py                       # against http://127.0.0.1:8000
     python scripts/seed_demo.py --reset               # delete the demo user's workspaces first
+    python scripts/seed_demo.py --url https://...     # against a deployment
 
 Empty screens photograph badly and demo worse: a dashboard reading zero proves nothing, and a
 memory page with one row does not show what the feature is for. This creates a workspace with
@@ -30,7 +31,7 @@ import json as json_module                           # noqa: E402
 
 EMAIL = "demo@example.com"
 PASSWORD = "correct-horse-battery"
-BASE = "http://127.0.0.1:8000/api"
+BASE = "http://127.0.0.1:8000/api"   # overridden by --url
 
 DOCUMENTS = {
     "vector_database_benchmark.md": """# Vector Database Benchmark — Q1 2026
@@ -187,7 +188,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reset", action="store_true",
                         help="delete the demo user's existing workspaces first")
+    parser.add_argument("--url", help="base URL of a deployment, e.g. https://x.onrender.com")
     args = parser.parse_args()
+
+    if args.url:
+        global BASE
+        BASE = args.url.rstrip("/") + "/api"
 
     print(f"\nSeeding {BASE}\n")
 

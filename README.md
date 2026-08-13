@@ -12,6 +12,13 @@ something you said three sessions ago.**
 [![Tests](https://img.shields.io/badge/tests-406_passing-success?style=for-the-badge)](tests/)
 [![WCAG](https://img.shields.io/badge/WCAG-AA_verified-0F9D58?style=for-the-badge)](scripts/check_contrast.js)
 
+### [**▶ Try it live**](https://ai-workspace-fx09.onrender.com)
+
+<samp>Sign in as `demo@example.com` / `correct-horse-battery` for a workspace with documents,
+conversations and memory already in it — or create your own account.</samp>
+
+<samp>Free tier: it sleeps after ~15 minutes idle, so the first load can take a minute.</samp>
+
 <samp>Visibility Bots Innovation Lab · AI Summer Fellowship 2026 · Track 2: NLP & AI Agents · **Week 5**</samp>
 
 </div>
@@ -113,7 +120,7 @@ PHASE 6 PASSED - 9 skills ran live, prompts version cleanly.
 PHASE 7 PASSED - dashboard figures match SQL, export works, 5 advanced features.
 PHASE 8 PASSED - 44 scenarios scored, 6 experiments with data, no overstated finding.
 PHASE 9 PASSED - document-borne injection resisted, isolation holds live.
-PHASE 10 PASSED - 11 documents, generated docs current, links resolve.
+PHASE 10 PASSED - 12 documents, generated docs current, links resolve.
 PHASE 11 PASSED - register, cite, recall and isolate, all over HTTP.
 EVALUATION    - 44 scenarios, 86.4% accuracy, 100% citation quality.
 EXPERIMENTS   - 6 of 6 with results; 3 contradict the shipped defaults.
@@ -972,12 +979,24 @@ uses `pool_pre_ping` and `pool_recycle=300` to make that a transparent reconnect
 
 ## Screenshots
 
-*Captured from the deployed instance in Phase 11, alongside the live URL.*
+**[The deployment is live](https://ai-workspace-fx09.onrender.com)** — click through the real
+thing rather than looking at pictures of it. Sign in as `demo@example.com` /
+`correct-horse-battery`, or register your own account.
 
-To see the product locally in the meantime, [RUNNING.md](RUNNING.md) starts it in two
-commands, and `python scripts/seed_demo.py --reset` fills a workspace with real content —
-documents parsed and chunked, conversations answered by the actual model, memory the
-extractor found on its own — so no screen is empty.
+The demo workspace is populated by [`scripts/seed_demo.py`](scripts/seed_demo.py) and everything
+in it is genuine: three documents really parsed and embedded, four conversations really answered
+by the model with citations back to the source file, and four memories the extractor found on its
+own from a single message. Nothing was inserted straight into the database to make a screen look
+fuller than the platform can actually make it.
+
+| Screen | What to look at |
+|---|---|
+| **Chat** | Numbered source chips under each answer — click one for the exact excerpt the model was given |
+| **Documents** | Page and chunk counts, and whether retrieval is hybrid or degraded to keyword-only |
+| **Memory** | Four auto-extracted items, with importance, rank and whether each is workspace-scoped or global |
+| **Prompts** | `Incident summary` sits at v2; the history icon still holds v1 |
+| **Dashboard** | Every figure counted live from the database, including p95 reply time |
+| **Settings** | All eight assistant fields |
 
 ---
 
